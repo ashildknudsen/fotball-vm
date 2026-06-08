@@ -77,7 +77,44 @@ export default function TippeSkjema({
     setMelding(beskjed);
   }
 
+  // Easter egg: liten konfetti i rødt/hvitt/blått når Norge velges. 🇳🇴
+  async function feirNorge(lagId: string) {
+    if (lagId !== "norge") return;
+    const konfetti = (await import("canvas-confetti")).default;
+    konfetti({
+      particleCount: 70,
+      spread: 75,
+      origin: { y: 0.7 },
+      colors: ["#ef2b2d", "#ffffff", "#002868"],
+    });
+  }
+
+  // Stort easter egg: norske flagg skytes opp fra bunnen når man sender inn
+  // med Norge som verdensmester. 🇳🇴🏆
+  async function feirNorgeVerdensmester() {
+    const konfetti = (await import("canvas-confetti")).default;
+    const flagg = konfetti.shapeFromText({ text: "🇳🇴", scalar: 3 });
+    const skyt = (x: number) =>
+      konfetti({
+        particleCount: 18,
+        startVelocity: 60,
+        gravity: 0.8,
+        spread: 55,
+        angle: 90,
+        origin: { x, y: 1.2 },
+        shapes: [flagg],
+        scalar: 3,
+        ticks: 300,
+      });
+    [0.15, 0.4, 0.6, 0.85].forEach((x) => skyt(x));
+  }
+
   function velgIGruppe(gruppe: Gruppe, lagId: string) {
+    const g = tipp.gruppe?.[gruppe];
+    const alleredeValgt = g?.vinner === lagId || g?.toer === lagId;
+    const harLedigPlass = !g?.vinner || !g?.toer;
+    if (!alleredeValgt && harLedigPlass) feirNorge(lagId);
+
     oppdater((t) => {
       t.gruppe ??= {};
       const g = (t.gruppe[gruppe] ??= {});
@@ -90,6 +127,7 @@ export default function TippeSkjema({
   }
 
   function velgTreer(kampnummer: number, lagId: string) {
+    feirNorge(lagId);
     oppdater((t) => {
       t.treere ??= {};
       if (lagId) t.treere[String(kampnummer)] = lagId;
@@ -98,6 +136,7 @@ export default function TippeSkjema({
   }
 
   function velgVinner(kampnummer: number, lagId: string) {
+    feirNorge(lagId);
     oppdater((t) => {
       t.vinnere ??= {};
       t.vinnere[String(kampnummer)] = lagId;
@@ -108,7 +147,10 @@ export default function TippeSkjema({
     start(async () => {
       const res = await påLagre(tipp, somLevert || levert);
       setMelding(res.melding);
-      if (res.ok && somLevert) setLevert(true);
+      if (res.ok && somLevert) {
+        setLevert(true);
+        if (tipp.vinnere?.["104"] === "norge") feirNorgeVerdensmester();
+      }
     });
   }
 

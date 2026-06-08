@@ -2,6 +2,7 @@ import {
   type Gruppe,
   type Plassreferanse,
   type Sluttspillkamp,
+  finalistBonus,
   finnKamp,
   lagIGruppe,
   poengPerRunde,
@@ -168,6 +169,18 @@ export function beregnPoeng(tipp: TippData, fasit: TippData): number {
     if (tipp.vinnere?.[kampnummer] === fasitVinner) {
       const kamp = finnKamp(Number(kampnummer));
       if (kamp) poeng += poengPerRunde[kamp.runde];
+    }
+  }
+
+  // Bonus: per lag man har riktig i finalen.
+  const fasitFinale = deltakerePåKamp(104, fasit);
+  const fasitFinalister = new Set(
+    [fasitFinale.hjemme, fasitFinale.borte].filter(Boolean) as string[],
+  );
+  if (fasitFinalister.size > 0) {
+    const tippFinale = deltakerePåKamp(104, tipp);
+    for (const lag of [tippFinale.hjemme, tippFinale.borte]) {
+      if (lag && fasitFinalister.has(lag)) poeng += finalistBonus;
     }
   }
 

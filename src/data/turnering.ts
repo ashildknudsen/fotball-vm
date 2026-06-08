@@ -186,3 +186,6 @@ export const poengPerRunde: Record<RundeType | "gruppe", number> = {
   bronsefinale: 10,
   finale: 15,
 };
+
+// Bonus per lag man har riktig i finalen (opptil to lag).
+export const finalistBonus = 5;

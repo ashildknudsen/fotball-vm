@@ -26,9 +26,6 @@ export default async function ResultatSide() {
   const navnFor = new Map(
     (profiler ?? []).map((p) => [p.id as string, p.visningsnavn as string]),
   );
-  const harFasit =
-    Object.keys(fasit.gruppe ?? {}).length > 0 ||
-    Object.keys(fasit.vinnere ?? {}).length > 0;
 
   const rader: Rad[] = (tippRader ?? [])
     .map((t) => ({
@@ -47,12 +44,24 @@ export default async function ResultatSide() {
       </Link>
       <h1 className="text-2xl font-bold">🏆 Resultattavle</h1>
 
-      {!harFasit && (
-        <p className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-800">
-          Fasit er ikke lagt inn ennå – poengene oppdateres så snart
-          mesterskapet er i gang.
-        </p>
-      )}
+      <div className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900">
+        <p className="font-semibold">Slik får du poeng</p>
+        <ul className="mt-1 list-disc space-y-0.5 pl-4">
+          <li>
+            <strong>Gruppespill:</strong> 1 poeng for hvert lag du har riktig
+            videre (1.- eller 2.-plass), og 1 poeng for hver riktig treer.
+          </li>
+          <li>
+            <strong>Sluttspill:</strong> poeng for hver riktig tippet kampvinner
+            – mer jo lenger ut: 16-delsfinale 2, åttendelsfinale 3, kvartfinale
+            5, semifinale 8, bronsefinale 10, finale 15.
+          </li>
+          <li>
+            <strong>Bonus:</strong> +5 poeng for hvert lag du har riktig i
+            finalen.
+          </li>
+        </ul>
+      </div>
 
       {rader.length === 0 ? (
         <p className="text-zinc-500">Ingen har levert tips ennå.</p>
