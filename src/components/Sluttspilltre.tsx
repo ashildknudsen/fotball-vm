@@ -24,7 +24,7 @@ export default function Sluttspilltre({ tipp }: { tipp: TippData }) {
   return (
     <div className="flex flex-col gap-4">
       {mester && (
-        <p className="rounded-lg bg-amber-50 px-4 py-3 text-center font-semibold text-amber-800">
+        <p className="rounded-lg bg-emerald-100 px-4 py-3 text-center font-semibold text-emerald-900">
           🏆 Verdensmester: {mester.flagg} {mester.navn}
         </p>
       )}
@@ -64,7 +64,7 @@ function Kampkort({ kamp, tipp }: { kamp: Sluttspillkamp; tipp: TippData }) {
   const { hjemme, borte } = deltakerePåKamp(kamp.nummer, tipp);
   const vinner = tipp.vinnere?.[String(kamp.nummer)] ?? null;
   return (
-    <div className="w-44 rounded-lg border border-zinc-200 p-2">
+    <div className="w-40 rounded-lg border border-zinc-200 p-1.5">
       <Lagrad lagId={hjemme} vinner={vinner !== null && vinner === hjemme} />
       <Lagrad lagId={borte} vinner={vinner !== null && vinner === borte} />
     </div>
@@ -81,13 +81,12 @@ function Lagrad({
   const lag = lagId ? finnLag(lagId) : undefined;
   return (
     <div
-      className={`flex items-center gap-2 rounded px-1 py-1 text-sm ${
-        vinner ? "font-semibold text-zinc-900" : "text-zinc-400"
+      className={`flex items-center gap-2 rounded px-2 py-1 text-sm ${
+        vinner ? "bg-emerald-50 font-semibold text-zinc-900" : "text-zinc-400"
       }`}
     >
       <span className="text-base">{lag?.flagg ?? "🛡️"}</span>
       <span className="flex-1 truncate">{lag?.navn ?? "Ubestemt"}</span>
-      {vinner && <span className="text-[#5239ba]">✓</span>}
     </div>
   );
 }
