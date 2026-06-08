@@ -1,16 +1,15 @@
 import "server-only";
 
-// Klient mot API-FOOTBALL (API-SPORTS, v3). Gratis-tier dekker VM 2026.
-// Krever miljøvariabelen API_FOOTBALL_KEY.
-//
-// Vi normaliserer API-ets svar til et internt format (ApiKamp/ApiGruppetabell)
-// slik at byggFasit.ts er uavhengig av hvilken leverandør vi bruker.
+// Resultatkilde: openfootball/worldcup.json (offentlig, ingen API-nøkkel).
+// Vi henter kampoppsettet + resultatene, regner ut gruppetabeller fra
+// scorene, og normaliserer til interne typer slik at byggFasit.ts er
+// uavhengig av kilden.
 
-const BASE = "https://v3.football.api-sports.io";
-const LIGA = process.env.API_FOOTBALL_LIGA ?? "1"; // 1 = World Cup
-const SESONG = process.env.API_FOOTBALL_SESONG ?? "2026";
+const KILDE =
+  process.env.OPENFOOTBALL_URL ??
+  "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json";
 
-// ── Interne (leverandør-uavhengige) typer ──
+// ── Interne (kilde-uavhengige) typer ──
 export type ApiLag = {
   name?: string | null;
   shortName?: string | null;
@@ -31,72 +30,94 @@ export type ApiKamp = {
 export type ApiTabellrad = { position: number; team: ApiLag };
 export type ApiGruppetabell = { group: string | null; table: ApiTabellrad[] };
 
-// ── Rå API-FOOTBALL-typer (kun det vi bruker) ──
-type RåLag = { id: number; name: string; winner: boolean | null };
-type RåFixture = {
-  fixture: { id: number; date: string; status: { short: string } };
-  league: { round: string };
-  teams: { home: RåLag; away: RåLag };
+// ── openfootball-format (kun det vi bruker) ──
+type OfScore = { ft?: number[]; ht?: number[]; et?: number[]; p?: number[] };
+type OfKamp = {
+  round?: string;
+  date?: string;
+  team1: string;
+  team2: string;
+  group?: string;
+  score?: OfScore;
 };
-type RåStandingRad = { rank: number; team: { id: number; name: string }; group: string };
 
-const FERDIG = new Set(["FT", "AET", "PEN"]);
+async function hentRåkamper(): Promise<OfKamp[]> {
+  const res = await fetch(KILDE, { cache: "no-store" });
+  if (!res.ok) throw new Error(`openfootball svarte ${res.status}`);
+  const data = (await res.json()) as { matches?: OfKamp[] };
+  return data.matches ?? [];
+}
 
-async function hent<T>(sti: string): Promise<T> {
-  const nøkkel = process.env.API_FOOTBALL_KEY;
-  if (!nøkkel) throw new Error("API_FOOTBALL_KEY mangler.");
-  const res = await fetch(`${BASE}${sti}`, {
-    headers: { "x-apisports-key": nøkkel },
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    throw new Error(`API-FOOTBALL svarte ${res.status} for ${sti}`);
-  }
-  const json = (await res.json()) as { response: T; errors?: unknown };
-  if (json.errors && Object.keys(json.errors).length > 0) {
-    throw new Error(`API-FOOTBALL-feil: ${JSON.stringify(json.errors)}`);
-  }
-  return json.response;
+// Avgjør vinner ut fra score: straffer slår ekstraomganger slår ordinær tid.
+function vinnerAv(score: OfScore | undefined): ApiKamp["score"]["winner"] {
+  const par = score?.p ?? score?.et ?? score?.ft;
+  if (!par || par.length < 2) return null;
+  if (par[0] > par[1]) return "HOME_TEAM";
+  if (par[1] > par[0]) return "AWAY_TEAM";
+  return "DRAW";
 }
 
 export async function hentVMKamper(): Promise<ApiKamp[]> {
-  const fixtures = await hent<RåFixture[]>(
-    `/fixtures?league=${LIGA}&season=${SESONG}`,
-  );
-  return fixtures.map((f) => {
-    const runde = f.league.round ?? "";
-    const erGruppe = /group/i.test(runde);
-    const kort = f.fixture.status.short;
-    const winner = f.teams.home.winner
-      ? "HOME_TEAM"
-      : f.teams.away.winner
-        ? "AWAY_TEAM"
-        : null;
+  const kamper = await hentRåkamper();
+  return kamper.map((m, i) => {
+    const erGruppe = Boolean(m.group);
+    const ferdig = Boolean(m.score?.ft && m.score.ft.length >= 2);
     return {
-      id: f.fixture.id,
-      stage: erGruppe ? "GROUP_STAGE" : runde.toUpperCase(),
-      group: erGruppe ? runde : null,
-      status: FERDIG.has(kort) ? "FINISHED" : kort,
-      utcDate: f.fixture.date,
-      homeTeam: { name: f.teams.home.name },
-      awayTeam: { name: f.teams.away.name },
-      score: { winner },
+      id: i + 1,
+      stage: erGruppe ? "GROUP_STAGE" : (m.round ?? "").toUpperCase(),
+      group: m.group ?? null,
+      status: ferdig ? "FINISHED" : "SCHEDULED",
+      utcDate: m.date ?? "",
+      homeTeam: { name: m.team1 },
+      awayTeam: { name: m.team2 },
+      score: { winner: vinnerAv(m.score) },
     };
   });
 }
 
+// Regner ut gruppetabeller fra ferdigspilte gruppekamper (poeng, deretter
+// målforskjell, deretter scorede mål). Forenklet ift. FIFAs fulle regelverk,
+// men godt nok – admin kan overstyre i grensetilfeller.
 export async function hentVMTabeller(): Promise<ApiGruppetabell[]> {
-  // standings-svaret: response[0].league.standings = [ [gruppe-rader], ... ]
-  const respons = await hent<
-    { league: { standings: RåStandingRad[][] } }[]
-  >(`/standings?league=${LIGA}&season=${SESONG}`);
+  const kamper = await hentRåkamper();
 
-  const grupper = respons[0]?.league?.standings ?? [];
-  return grupper.map((rader) => ({
-    group: rader[0]?.group ?? null,
-    table: rader.map((r) => ({
-      position: r.rank,
-      team: { name: r.team.name },
-    })),
-  }));
+  type Rad = { navn: string; poeng: number; mf: number; scoret: number };
+  const grupper = new Map<string, Map<string, Rad>>();
+
+  const sørgForRad = (g: string, navn: string): Rad => {
+    if (!grupper.has(g)) grupper.set(g, new Map());
+    const tabell = grupper.get(g)!;
+    if (!tabell.has(navn)) tabell.set(navn, { navn, poeng: 0, mf: 0, scoret: 0 });
+    return tabell.get(navn)!;
+  };
+
+  for (const m of kamper) {
+    if (!m.group || !m.score?.ft || m.score.ft.length < 2) continue;
+    const [h, b] = m.score.ft;
+    const hjemme = sørgForRad(m.group, m.team1);
+    const borte = sørgForRad(m.group, m.team2);
+    hjemme.scoret += h;
+    borte.scoret += b;
+    hjemme.mf += h - b;
+    borte.mf += b - h;
+    if (h > b) hjemme.poeng += 3;
+    else if (b > h) borte.poeng += 3;
+    else {
+      hjemme.poeng += 1;
+      borte.poeng += 1;
+    }
+  }
+
+  return [...grupper.entries()].map(([group, tabell]) => {
+    const sortert = [...tabell.values()].sort(
+      (a, b) => b.poeng - a.poeng || b.mf - a.mf || b.scoret - a.scoret,
+    );
+    return {
+      group,
+      table: sortert.map((r, i) => ({
+        position: i + 1,
+        team: { name: r.navn },
+      })),
+    };
+  });
 }

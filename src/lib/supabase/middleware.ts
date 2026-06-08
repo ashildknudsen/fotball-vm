@@ -2,7 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Ruter som er åpne uten innlogging.
-const åpneRuter = ["/logg-inn", "/auth/callback", "/auth/feil"];
+// /api/oppdater-fasit beskytter seg selv (cron-token eller admin), så den må
+// slippe forbi proxy-en – ellers blir cron-kall uten sesjon redirectet.
+const åpneRuter = [
+  "/logg-inn",
+  "/auth/callback",
+  "/auth/feil",
+  "/api/oppdater-fasit",
+];
 
 // Oppdaterer Supabase-sesjonen og beskytter ruter mot uinnloggede brukere.
 export async function oppdaterSesjon(request: NextRequest) {
