@@ -33,7 +33,7 @@ export default function OppdaterFraApi() {
           <p className="font-medium">Hent resultater automatisk</p>
           <p className="text-sm text-zinc-500">
             Henter fra openfootball og fyller inn fasit. Oppdateres også
-            automatisk hver time.
+            automatisk hver morgen (ca. kl. 08).
           </p>
         </div>
         <button
