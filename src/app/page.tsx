@@ -40,27 +40,29 @@ export default async function Hjemmeside() {
         )}
 
         <nav className="grid w-full gap-4 sm:grid-cols-2">
-          <Kort
+          <Link
             href="/tipp"
-            tittel="Bli med å tippe"
-            beskrivelse="Tipp hvem som går videre fra gruppene og hele veien til finalen."
-          />
+            className="group flex flex-col items-start gap-1 rounded-xl border border-zinc-200 p-5 text-left transition hover:border-zinc-400 hover:shadow-sm"
+          >
+            <h2 className="font-semibold">👉 Bli med å tippe</h2>
+            <p className="text-sm text-zinc-500">
+              Tipp hvem som går videre fra gruppene og hele veien til finalen.
+            </p>
+            <span className="mt-3 w-full rounded-lg bg-[#5239ba] px-4 py-2 text-center text-sm font-medium text-white transition group-hover:bg-[#43309c]">
+              Sett i gang
+            </span>
+          </Link>
+
           <Kort
             href="/resultater"
-            tittel="Resultattavle"
-            beskrivelse="Se hvem som leder konkurransen."
+            tittel="Se hvem som leder"
+            beskrivelse="Følg poengtavlen underveis i mesterskapet."
+            emoji="🏆"
           />
-          {admin && (
-            <Kort
-              href="/admin"
-              tittel="Admin: fasit"
-              beskrivelse="Legg inn faktiske resultater underveis."
-            />
-          )}
         </nav>
       </main>
 
-      <footer className="p-6 text-center">
+      <footer className="flex flex-col items-center gap-2 p-6 text-center">
         <form action="/logg-ut" method="post">
           <button
             type="submit"
@@ -69,6 +71,14 @@ export default async function Hjemmeside() {
             Logg ut
           </button>
         </form>
+        {admin && (
+          <Link
+            href="/admin"
+            className="text-xs text-zinc-300 transition hover:text-zinc-500"
+          >
+            Admin
+          </Link>
+        )}
       </footer>
     </div>
   );
@@ -78,17 +88,22 @@ function Kort({
   href,
   tittel,
   beskrivelse,
+  emoji,
 }: {
   href: string;
   tittel: string;
   beskrivelse: string;
+  emoji?: string;
 }) {
   return (
     <Link
       href={href}
       className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-5 text-left transition hover:border-zinc-400 hover:shadow-sm"
     >
-      <span className="font-semibold">{tittel}</span>
+      <span className="font-semibold">
+        {emoji ? `${emoji} ` : ""}
+        {tittel}
+      </span>
       <span className="text-sm text-zinc-500">{beskrivelse}</span>
     </Link>
   );

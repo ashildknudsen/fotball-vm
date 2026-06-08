@@ -330,7 +330,7 @@ export default function TippeSkjema({
                   type="button"
                   onClick={() => lagre(false)}
                   disabled={venter}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                  className="rounded-lg bg-[#5239ba] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#43309c] disabled:opacity-50"
                 >
                   {venter ? "Lagrer…" : "Lagre fasit"}
                 </button>
@@ -348,7 +348,7 @@ export default function TippeSkjema({
                     type="button"
                     onClick={() => lagre(true)}
                     disabled={venter}
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                    className="rounded-lg bg-[#5239ba] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#43309c] disabled:opacity-50"
                   >
                     Jeg er fornøyd, send inn
                   </button>

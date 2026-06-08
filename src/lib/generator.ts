@@ -7,12 +7,11 @@ import {
   treerPlasser,
 } from "@/lib/tipp";
 
-// Genererer en komplett tippekupong. `verdi` gir hvert lag en "styrke";
-// hvert valg får i tillegg en tilfeldig slump, så to kjøringer aldri blir like.
-function generer(verdi: (lagId: string) => number): TippData {
-  // Tilfeldig nøkkel per lag: styrke ganget med en slump i [0.5, 1.5].
-  const nøkkel = (lagId: string) => verdi(lagId) * (0.5 + Math.random());
-
+// Genererer en komplett tippekupong. `nøkkel` gir hvert lag et tall som
+// avgjør hvem som vinner – jo høyere, jo bedre. Funksjonen kalles på nytt
+// for hvert valg, så den må inneholde tilfeldighet (slik blir to kjøringer
+// aldri like).
+function generer(nøkkel: (lagId: string) => number): TippData {
   const velgHøyeste = (ider: string[]): string => {
     let beste = ider[0];
     let besteNøkkel = nøkkel(beste);
@@ -28,7 +27,7 @@ function generer(verdi: (lagId: string) => number): TippData {
 
   const tipp: TippData = { gruppe: {}, treere: {}, vinnere: {} };
 
-  // Gruppespill: sorter lagene etter tilfeldig nøkkel, topp 2 går videre.
+  // Gruppespill: sorter lagene etter nøkkel, topp 2 går videre.
   for (const gruppe of grupper) {
     const sortert = lagIGruppe(gruppe)
       .map((l) => ({ id: l.id, k: nøkkel(l.id) }))
@@ -58,41 +57,43 @@ function generer(verdi: (lagId: string) => number): TippData {
   return sanérTipp(tipp);
 }
 
-// Helt tilfeldig oppsett (alle lag like sterke – ren slump).
+// Helt tilfeldig oppsett – ren slump, ranking ignoreres.
 export function genererTilfeldig(): TippData {
-  return generer(() => 1);
+  return generer(() => Math.random());
 }
 
-// Oppsett basert på (omtrentlig) FIFA-ranking, med tilfeldig slump.
+// Oppsett basert på FIFA-ranking, med additiv slump (±150 poeng) så det blir
+// rom for overraskelser uten at favorittene drukner.
 export function genererFraRanking(): TippData {
-  return generer((id) => fifaStyrke[id] ?? 50);
+  return generer(
+    (id) => (fifaPoeng[id] ?? 1300) + (Math.random() - 0.5) * 300,
+  );
 }
 
-// Omtrentlig styrke per lag basert på FIFA-ranking (høyere = sterkere).
-// Trenger ikke være helt presist – brukes bare til å vekte generatoren.
-const fifaStyrke: Record<string, number> = {
+// Offisiell FIFA/Coca-Cola World Ranking per 1. april 2026 (poeng).
+const fifaPoeng: Record<string, number> = {
   // Gruppe A
-  mexico: 72, "sor-korea": 64, tsjekkia: 66, "sor-afrika": 50,
+  mexico: 1687.48, "sor-korea": 1591.63, tsjekkia: 1505.74, "sor-afrika": 1428.38,
   // Gruppe B
-  canada: 62, qatar: 52, sveits: 78, "bosnia-hercegovina": 58,
+  canada: 1559.48, qatar: 1450.31, sveits: 1650.06, "bosnia-hercegovina": 1387.22,
   // Gruppe C
-  brasil: 93, haiti: 30, skottland: 60, marokko: 80,
+  brasil: 1765.86, haiti: 1293.10, skottland: 1503.34, marokko: 1755.10,
   // Gruppe D
-  usa: 70, paraguay: 56, australia: 63, tyrkia: 68,
+  usa: 1671.23, paraguay: 1505.35, australia: 1579.34, tyrkia: 1605.73,
   // Gruppe E
-  tyskland: 86, curacao: 28, elfenbenskysten: 65, ecuador: 69,
+  tyskland: 1735.77, curacao: 1294.77, elfenbenskysten: 1540.87, ecuador: 1598.52,
   // Gruppe F
-  nederland: 90, japan: 74, sverige: 61, tunisia: 59,
+  nederland: 1751.10, japan: 1661.58, sverige: 1509.79, tunisia: 1476.41,
   // Gruppe G
-  belgia: 88, egypt: 67, iran: 66, "new-zealand": 40,
+  belgia: 1742.24, egypt: 1562.37, iran: 1619.58, "new-zealand": 1275.58,
   // Gruppe H
-  spania: 96, "kapp-verde": 35, "saudi-arabia": 48, uruguay: 81,
+  spania: 1873.01, "kapp-verde": 1371.11, "saudi-arabia": 1421.54, uruguay: 1673.07,
   // Gruppe I
-  frankrike: 97, senegal: 76, irak: 45, norge: 73,
+  frankrike: 1869.43, senegal: 1686.41, irak: 1451.15, norge: 1557.44,
   // Gruppe J
-  argentina: 98, algerie: 64, osterrike: 71, jordan: 42,
+  argentina: 1876.12, algerie: 1571.03, osterrike: 1597.40, jordan: 1387.74,
   // Gruppe K
-  portugal: 92, "dr-kongo": 54, usbekistan: 49, colombia: 79,
+  portugal: 1766.18, "dr-kongo": 1479.68, usbekistan: 1461.21, colombia: 1698.35,
   // Gruppe L
-  england: 94, kroatia: 82, ghana: 62, panama: 44,
+  england: 1827.05, kroatia: 1714.87, ghana: 1346.88, panama: 1539.16,
 };
