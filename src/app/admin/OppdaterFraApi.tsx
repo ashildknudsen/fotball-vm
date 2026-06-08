@@ -32,7 +32,7 @@ export default function OppdaterFraApi() {
         <div>
           <p className="font-medium">Hent resultater automatisk</p>
           <p className="text-sm text-zinc-500">
-            Henter fra football-data.org og fyller inn fasit. Oppdateres også
+            Henter fra API-FOOTBALL og fyller inn fasit. Oppdateres også
             automatisk hver time.
           </p>
         </div>
