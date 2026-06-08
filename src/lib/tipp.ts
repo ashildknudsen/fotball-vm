@@ -176,7 +176,7 @@ export function beregnPoeng(tipp: TippData, fasit: TippData): number {
 
 // Tippefristen som dato. Settes via env (ISO-dato), default kickoff 2026.
 export function tippefrist(): Date {
-  return new Date(process.env.TIPPEFRIST ?? "2026-06-11T16:00:00Z");
+  return new Date(process.env.TIPPEFRIST ?? "2026-06-11T19:00:00Z");
 }
 
 // Er tippefristen passert?

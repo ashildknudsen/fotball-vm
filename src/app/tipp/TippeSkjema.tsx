@@ -18,6 +18,7 @@ import {
   sanérTipp,
   treerPlasser,
 } from "@/lib/tipp";
+import { genererTilfeldig, genererFraRanking } from "@/lib/generator";
 
 export type LagreResultat = { ok: boolean; melding: string };
 
@@ -68,6 +69,12 @@ export default function TippeSkjema({
       return sanérTipp(klone);
     });
     setMelding(null);
+  }
+
+  function settHeleTipp(ny: TippData, beskjed: string) {
+    if (!kanEndre) return;
+    setTipp(sanérTipp(ny));
+    setMelding(beskjed);
   }
 
   function velgIGruppe(gruppe: Gruppe, lagId: string) {
@@ -121,6 +128,50 @@ export default function TippeSkjema({
 
   return (
     <div className="flex flex-col gap-10 pb-32">
+      {/* ── Generator ── */}
+      {kanEndre && !erFasit && (
+        <section className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+          <div>
+            <h2 className="font-semibold">Få et ferdig forslag</h2>
+            <p className="text-sm text-zinc-500">
+              La oss fylle ut hele kupongen for deg – så kan du justere etterpå.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() =>
+                settHeleTipp(
+                  genererTilfeldig(),
+                  "Lykken er gjort – hele kupongen er fylt ut. Juster gjerne før du sender inn.",
+                )
+              }
+              className="flex flex-1 flex-col items-start gap-0.5 rounded-lg border border-zinc-300 bg-white px-4 py-3 text-left transition hover:bg-zinc-50"
+            >
+              <span className="text-sm font-semibold">Prøv lykken</span>
+              <span className="text-xs text-zinc-500">
+                Vi plukker lag helt på slump
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                settHeleTipp(
+                  genererFraRanking(),
+                  "Nesten vitenskapelig kupong generert – juster gjerne før du sender inn.",
+                )
+              }
+              className="flex flex-1 flex-col items-start gap-0.5 rounded-lg border border-zinc-300 bg-white px-4 py-3 text-left transition hover:bg-zinc-50"
+            >
+              <span className="text-sm font-semibold">Nesten vitenskapelig</span>
+              <span className="text-xs text-zinc-500">
+                Basert på FIFA-ranking, med litt rom for overraskelser
+              </span>
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* ── Gruppespill ── */}
       <section className="flex flex-col gap-4">
         <Seksjonstittel
@@ -299,7 +350,7 @@ export default function TippeSkjema({
                     disabled={venter}
                     className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
                   >
-                    Lever tips
+                    Jeg er fornøyd, send inn
                   </button>
                 </>
               )}

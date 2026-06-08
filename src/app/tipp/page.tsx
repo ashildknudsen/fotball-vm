@@ -35,7 +35,7 @@ export default async function TippSide() {
         )}
       </div>
 
-      <h1 className="text-2xl font-bold">📝 Mitt tips</h1>
+      <h1 className="text-2xl font-bold">Velg hvilke lag du tror vil vinne</h1>
 
       {låst ? (
         <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VM-tipping 2026",
+  title: "Fikens VM-konkurranse 2026",
   description: "Intern tippekonkurranse for Fotball-VM 2026",
 };
 

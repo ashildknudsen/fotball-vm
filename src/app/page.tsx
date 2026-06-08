@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { hentEllerOpprettProfil, erAdmin } from "@/lib/profil";
 import { tippingErLåst, tippefristTekst } from "@/lib/tipp";
@@ -11,8 +12,17 @@ export default async function Hjemmeside() {
   return (
     <div className="flex min-h-screen flex-col">
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-8 p-6 text-center">
+        <Image
+          src="/fotball.svg"
+          alt=""
+          width={120}
+          height={157}
+          priority
+          unoptimized
+          className="h-auto w-40 sm:w-48"
+        />
         <header className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold">⚽ VM-tipping 2026</h1>
+          <h1 className="text-3xl font-bold">Fikens VM-konkurranse 2026</h1>
           <p className="text-zinc-500">Hei, {profil.visningsnavn}!</p>
         </header>
 
@@ -34,20 +44,17 @@ export default async function Hjemmeside() {
             href="/tipp"
             tittel="Bli med å tippe"
             beskrivelse="Tipp hvem som går videre fra gruppene og hele veien til finalen."
-            emoji="📝"
           />
           <Kort
             href="/resultater"
             tittel="Resultattavle"
             beskrivelse="Se hvem som leder konkurransen."
-            emoji="🏆"
           />
           {admin && (
             <Kort
               href="/admin"
               tittel="Admin: fasit"
               beskrivelse="Legg inn faktiske resultater underveis."
-              emoji="⚙️"
             />
           )}
         </nav>
@@ -71,19 +78,16 @@ function Kort({
   href,
   tittel,
   beskrivelse,
-  emoji,
 }: {
   href: string;
   tittel: string;
   beskrivelse: string;
-  emoji: string;
 }) {
   return (
     <Link
       href={href}
       className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-5 text-left transition hover:border-zinc-400 hover:shadow-sm"
     >
-      <span className="text-2xl">{emoji}</span>
       <span className="font-semibold">{tittel}</span>
       <span className="text-sm text-zinc-500">{beskrivelse}</span>
     </Link>

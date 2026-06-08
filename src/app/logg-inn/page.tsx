@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { lagNettleserKlient } from "@/lib/supabase/client";
 
 export default function LoggInnSide() {
@@ -20,10 +21,20 @@ export default function LoggInnSide() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 p-6 text-center">
+      <Image
+        src="/fotball.svg"
+        alt=""
+        width={120}
+        height={157}
+        priority
+        unoptimized
+        className="h-auto w-40 sm:w-48"
+      />
       <div>
-        <h1 className="text-3xl font-bold">⚽ VM-tipping 2026</h1>
+        <h1 className="text-3xl font-bold">Fikens VM-konkurranse 2026</h1>
         <p className="mt-2 text-zinc-500">
-          Logg inn med din Fiken-konto for å tippe.
+          Logg inn for å delta i Fikens VM-konkurranse 2026. Gode premier og
+          bare for gøy!
         </p>
       </div>
 
