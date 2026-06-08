@@ -1,0 +1,419 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import {
+  type Gruppe,
+  type Plassreferanse,
+  type RundeType,
+  type Sluttspillkamp,
+  finnLag,
+  grupper,
+  lagIGruppe,
+  sluttspill,
+} from "@/data/turnering";
+import {
+  type TippData,
+  deltakerePåKamp,
+  gyldigeTreereForKamp,
+  sanérTipp,
+  treerPlasser,
+} from "@/lib/tipp";
+
+export type LagreResultat = { ok: boolean; melding: string };
+
+const rundeRekkefølge: RundeType[] = [
+  "16-delsfinale",
+  "8-delsfinale",
+  "kvartfinale",
+  "semifinale",
+  "bronsefinale",
+  "finale",
+];
+
+const rundeTittel: Record<RundeType, string> = {
+  "16-delsfinale": "16-delsfinale",
+  "8-delsfinale": "8-delsfinale",
+  kvartfinale: "Kvartfinale",
+  semifinale: "Semifinale",
+  bronsefinale: "Bronsefinale",
+  finale: "Finale",
+};
+
+export default function TippeSkjema({
+  startTipp,
+  erLevert,
+  låst,
+  påLagre,
+  modus = "tipp",
+}: {
+  startTipp: TippData;
+  erLevert: boolean;
+  låst: boolean;
+  påLagre: (data: TippData, levert: boolean) => Promise<LagreResultat>;
+  modus?: "tipp" | "fasit";
+}) {
+  const [tipp, setTipp] = useState<TippData>(() => sanérTipp(startTipp));
+  const [levert, setLevert] = useState(erLevert);
+  const [melding, setMelding] = useState<string | null>(null);
+  const [venter, start] = useTransition();
+
+  const kanEndre = !låst;
+  const erFasit = modus === "fasit";
+
+  function oppdater(endre: (t: TippData) => void) {
+    if (!kanEndre) return;
+    setTipp((forrige) => {
+      const klone: TippData = structuredClone(forrige);
+      endre(klone);
+      return sanérTipp(klone);
+    });
+    setMelding(null);
+  }
+
+  function velgIGruppe(gruppe: Gruppe, lagId: string) {
+    oppdater((t) => {
+      t.gruppe ??= {};
+      const g = (t.gruppe[gruppe] ??= {});
+      if (g.vinner === lagId) delete g.vinner;
+      else if (g.toer === lagId) delete g.toer;
+      else if (!g.vinner) g.vinner = lagId;
+      else if (!g.toer) g.toer = lagId;
+      // Begge plasser tatt – klikk på et tredje lag ignoreres.
+    });
+  }
+
+  function velgTreer(kampnummer: number, lagId: string) {
+    oppdater((t) => {
+      t.treere ??= {};
+      if (lagId) t.treere[String(kampnummer)] = lagId;
+      else delete t.treere[String(kampnummer)];
+    });
+  }
+
+  function velgVinner(kampnummer: number, lagId: string) {
+    oppdater((t) => {
+      t.vinnere ??= {};
+      t.vinnere[String(kampnummer)] = lagId;
+    });
+  }
+
+  function lagre(somLevert: boolean) {
+    start(async () => {
+      const res = await påLagre(tipp, somLevert || levert);
+      setMelding(res.melding);
+      if (res.ok && somLevert) setLevert(true);
+    });
+  }
+
+  // Fremdrift
+  const antallGruppe = grupper.filter(
+    (g) => tipp.gruppe?.[g]?.vinner && tipp.gruppe?.[g]?.toer,
+  ).length;
+  const antallTreere = treerPlasser().filter(
+    (p) => tipp.treere?.[String(p.nummer)],
+  ).length;
+  const antallVinnere = sluttspill.filter(
+    (k) => tipp.vinnere?.[String(k.nummer)],
+  ).length;
+  const mester = tipp.vinnere?.["104"]
+    ? finnLag(tipp.vinnere["104"])
+    : undefined;
+
+  return (
+    <div className="flex flex-col gap-10 pb-32">
+      {/* ── Gruppespill ── */}
+      <section className="flex flex-col gap-4">
+        <Seksjonstittel
+          tittel="1 · Gruppespill"
+          undertittel={`Velg hvem som går videre (1. og 2.) · ${antallGruppe}/12 grupper`}
+        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {grupper.map((gruppe) => (
+            <div
+              key={gruppe}
+              className="rounded-xl border border-zinc-200 p-3"
+            >
+              <h3 className="mb-2 text-sm font-semibold text-zinc-500">
+                Gruppe {gruppe}
+              </h3>
+              <ul className="flex flex-col gap-1.5">
+                {lagIGruppe(gruppe).map((l) => {
+                  const g = tipp.gruppe?.[gruppe];
+                  const plass =
+                    g?.vinner === l.id ? 1 : g?.toer === l.id ? 2 : null;
+                  return (
+                    <li key={l.id}>
+                      <button
+                        type="button"
+                        disabled={!kanEndre}
+                        onClick={() => velgIGruppe(gruppe, l.id)}
+                        className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition ${
+                          plass
+                            ? "border-emerald-500 bg-emerald-50 font-medium"
+                            : "border-zinc-200 hover:border-zinc-300"
+                        } ${kanEndre ? "" : "cursor-default opacity-90"}`}
+                      >
+                        <span className="text-lg">{l.flagg}</span>
+                        <span className="flex-1">{l.navn}</span>
+                        {plass && (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
+                            {plass}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Treere ── */}
+      <section className="flex flex-col gap-4">
+        <Seksjonstittel
+          tittel="2 · De åtte beste treerne"
+          undertittel={`Velg hvilke treere som tar plassene i 16-delsfinalen · ${antallTreere}/8`}
+        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          {treerPlasser().map((plass) => {
+            const nøkkel = String(plass.nummer);
+            const valgt = tipp.treere?.[nøkkel] ?? "";
+            const brukteIAndre = new Set(
+              Object.entries(tipp.treere ?? {})
+                .filter(([k]) => k !== nøkkel)
+                .map(([, v]) => v),
+            );
+            const valg = gyldigeTreereForKamp(plass.nummer, tipp).filter(
+              (id) => id === valgt || !brukteIAndre.has(id),
+            );
+            const grupperTekst =
+              plass.borte.type === "treer"
+                ? plass.borte.muligeGrupper.join("/")
+                : "";
+            return (
+              <label
+                key={plass.nummer}
+                className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-3"
+              >
+                <span className="text-xs font-medium text-zinc-500">
+                  Kamp {plass.nummer} · treer fra gruppe {grupperTekst}
+                </span>
+                <select
+                  disabled={!kanEndre}
+                  value={valgt}
+                  onChange={(e) => velgTreer(plass.nummer, e.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white px-2 py-2 text-sm disabled:opacity-90"
+                >
+                  <option value="">— velg lag —</option>
+                  {valg.map((id) => {
+                    const l = finnLag(id)!;
+                    return (
+                      <option key={id} value={id}>
+                        {l.flagg} {l.navn} (gr. {l.gruppe})
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+            );
+          })}
+        </div>
+        {antallGruppe < 12 && (
+          <p className="text-xs text-zinc-400">
+            Tips: fyll ut gruppespillet først – da blir det tydeligere hvilke
+            lag som er kandidater til treer-plassene.
+          </p>
+        )}
+      </section>
+
+      {/* ── Sluttspill ── */}
+      <section className="flex flex-col gap-4">
+        <Seksjonstittel
+          tittel="3 · Sluttspill"
+          undertittel={`Klikk vinneren i hver kamp · ${antallVinnere}/${sluttspill.length}`}
+        />
+        {mester && (
+          <p className="rounded-lg bg-amber-50 px-4 py-3 text-center font-semibold text-amber-800">
+            🏆 Din verdensmester: {mester.flagg} {mester.navn}
+          </p>
+        )}
+        {rundeRekkefølge.map((runde) => (
+          <div key={runde} className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold text-zinc-500">
+              {rundeTittel[runde]}
+            </h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {sluttspill
+                .filter((k) => k.runde === runde)
+                .map((kamp) => (
+                  <Kampkort
+                    key={kamp.nummer}
+                    kamp={kamp}
+                    tipp={tipp}
+                    kanEndre={kanEndre}
+                    påVelg={velgVinner}
+                  />
+                ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* ── Lagre-linje ── */}
+      {kanEndre && (
+        <div className="fixed inset-x-0 bottom-0 border-t border-zinc-200 bg-white/95 p-3 backdrop-blur">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+            <span className="text-sm text-zinc-500">
+              {melding ??
+                (erFasit
+                  ? "Lagre fasit etter hvert som resultatene blir klare"
+                  : levert
+                    ? "Levert – kan fortsatt endres"
+                    : "Ikke levert ennå")}
+            </span>
+            <div className="flex gap-2">
+              {erFasit ? (
+                <button
+                  type="button"
+                  onClick={() => lagre(false)}
+                  disabled={venter}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {venter ? "Lagrer…" : "Lagre fasit"}
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => lagre(false)}
+                    disabled={venter}
+                    className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium transition hover:bg-zinc-50 disabled:opacity-50"
+                  >
+                    {venter ? "Lagrer…" : "Lagre kladd"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => lagre(true)}
+                    disabled={venter}
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    Lever tips
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Seksjonstittel({
+  tittel,
+  undertittel,
+}: {
+  tittel: string;
+  undertittel: string;
+}) {
+  return (
+    <div>
+      <h2 className="text-lg font-bold">{tittel}</h2>
+      <p className="text-sm text-zinc-500">{undertittel}</p>
+    </div>
+  );
+}
+
+function Kampkort({
+  kamp,
+  tipp,
+  kanEndre,
+  påVelg,
+}: {
+  kamp: Sluttspillkamp;
+  tipp: TippData;
+  kanEndre: boolean;
+  påVelg: (kampnummer: number, lagId: string) => void;
+}) {
+  const { hjemme, borte } = deltakerePåKamp(kamp.nummer, tipp);
+  const vinner = tipp.vinnere?.[String(kamp.nummer)] ?? null;
+  const beggeKlare = Boolean(hjemme && borte);
+
+  return (
+    <div className="rounded-xl border border-zinc-200 p-2">
+      <div className="mb-1 px-1 text-[11px] text-zinc-400">
+        Kamp {kamp.nummer}
+      </div>
+      <div className="flex flex-col gap-1">
+        <Lagvalg
+          lagId={hjemme}
+          referanse={kamp.hjemme}
+          valgt={vinner === hjemme && hjemme !== null}
+          deaktivert={!kanEndre || !beggeKlare}
+          påKlikk={() => hjemme && påVelg(kamp.nummer, hjemme)}
+        />
+        <Lagvalg
+          lagId={borte}
+          referanse={kamp.borte}
+          valgt={vinner === borte && borte !== null}
+          deaktivert={!kanEndre || !beggeKlare}
+          påKlikk={() => borte && påVelg(kamp.nummer, borte)}
+        />
+      </div>
+    </div>
+  );
+}
+
+function Lagvalg({
+  lagId,
+  referanse,
+  valgt,
+  deaktivert,
+  påKlikk,
+}: {
+  lagId: string | null;
+  referanse: Plassreferanse;
+  valgt: boolean;
+  deaktivert: boolean;
+  påKlikk: () => void;
+}) {
+  const lag = lagId ? finnLag(lagId) : undefined;
+  return (
+    <button
+      type="button"
+      disabled={deaktivert}
+      onClick={påKlikk}
+      className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-left text-sm transition ${
+        valgt
+          ? "border-emerald-500 bg-emerald-50 font-semibold"
+          : "border-zinc-200"
+      } ${deaktivert ? "opacity-70" : "hover:border-zinc-300"}`}
+    >
+      {lag ? (
+        <>
+          <span className="text-base">{lag.flagg}</span>
+          <span className="flex-1">{lag.navn}</span>
+          {valgt && <span className="text-emerald-600">✓</span>}
+        </>
+      ) : (
+        <span className="flex-1 text-zinc-400">{beskrivReferanse(referanse)}</span>
+      )}
+    </button>
+  );
+}
+
+// Lesbar plassholdertekst når et lag ikke er bestemt ennå.
+function beskrivReferanse(ref: Plassreferanse): string {
+  switch (ref.type) {
+    case "gruppe":
+      return `${ref.plassering}. plass gruppe ${ref.gruppe}`;
+    case "treer":
+      return "Beste treer";
+    case "vinner":
+      return `Vinner kamp ${ref.kamp}`;
+    case "taper":
+      return `Taper kamp ${ref.kamp}`;
+  }
+}

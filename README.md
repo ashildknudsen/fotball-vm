@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ⚽ VM-tipping 2026
 
-## Getting Started
+Intern tippekonkurranse for Fotball-VM 2026. Deltakere logger inn med
+Google (@fiken.no), tipper hvem som går videre fra hver gruppe og fyller ut
+hele sluttspill-treet til finalen. Poeng gis per riktig lag, mer jo lenger
+ut i sluttspillet.
 
-First, run the development server:
+**Stack:** Next.js (App Router, TypeScript) · Supabase (Postgres + Google
+Auth) · Tailwind · hostet på Vercel.
+
+---
+
+## Oppsett (engangsjobb)
+
+### 1. Supabase-prosjekt
+
+1. Opprett gratis konto + nytt prosjekt på [supabase.com](https://supabase.com).
+2. Gå til **SQL Editor** og kjør hele `supabase/schema.sql`.
+3. Hent nøkler under **Project Settings → API**:
+   - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
+   - `anon` `public` → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `service_role` → `SUPABASE_SERVICE_ROLE_KEY` (hemmelig!)
+
+### 2. Google-innlogging
+
+1. I [Google Cloud Console](https://console.cloud.google.com): opprett et
+   prosjekt → **APIs & Services → Credentials → Create OAuth client ID** →
+   *Web application*.
+2. **Authorized redirect URI:** `https://DITT-PROSJEKT.supabase.co/auth/v1/callback`
+   (finnes ferdig i Supabase under Authentication → Providers → Google).
+3. Kopier Client ID + Client Secret inn i Supabase under
+   **Authentication → Providers → Google**, og skru på provideren.
+4. Legg til både `http://localhost:3000` og Vercel-domenet under
+   **Authentication → URL Configuration → Redirect URLs**.
+
+### 3. Miljøvariabler
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.local.example .env.local
+# fyll inn verdiene
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 4. Kjør lokalt
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+# http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Deploy til Vercel
 
-To learn more about Next.js, take a look at the following resources:
+1. Push til GitHub og importer repoet i Vercel.
+2. Legg inn de samme miljøvariablene under **Settings → Environment Variables**.
+3. Legg Vercel-domenet til i Supabase **Redirect URLs** og Google OAuth.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Turneringsdata
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Lag, grupper og sluttspill-stige ligger i `src/data/turnering.ts` (bekreftet
+mot NRK/Eurosport, FIFAs offisielle stige kamp 73–104). Databasen lagrer kun
+profiler, tips og fasit.
