@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { hentEllerOpprettProfil, erAdmin } from "@/lib/profil";
-import { tippingErLåst, tippefristTekst } from "@/lib/tipp";
+import { tippingErLåst, tippefristTekst, tippefrist } from "@/lib/tipp";
+import Nedtelling from "@/components/Nedtelling";
 
 export default async function Hjemmeside() {
   const profil = await hentEllerOpprettProfil();
@@ -32,18 +33,20 @@ export default async function Hjemmeside() {
             resultattavlen!
           </p>
         ) : (
-          <p className="w-full rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            Konkurransen er åpen frem til <strong>{frist}</strong>. Bli med å
-            tippe kampresultater før det! Premien for høyeste score er en
-            valgfri landslagsdrakt (voksen/barn) fra Unisport.
-          </p>
+          <div className="flex w-full flex-col items-center gap-3 rounded-lg bg-[#5239ba]/10 px-4 py-4 text-center">
+            <p className="text-sm text-zinc-700">
+              Konkurransen er åpen frem til <strong>{frist}</strong>. Bli med å
+              tippe kampresultater før det!
+            </p>
+            <Nedtelling frist={tippefrist().getTime()} />
+          </div>
         )}
 
         <nav className="grid w-full gap-4 sm:grid-cols-2">
           <HandlingsKort
             href="/tipp"
             emoji="👉"
-            tittel="Bli med å tippe"
+            tittel="Bli med i konkurransen"
             beskrivelse="Tipp hvem som går videre fra gruppene og hele veien til finalen."
             knapp="Sett i gang"
           />
@@ -56,6 +59,25 @@ export default async function Hjemmeside() {
             sekundær
           />
         </nav>
+
+        <div className="flex w-full flex-col items-center gap-4 rounded-xl border border-zinc-200 p-5 text-center sm:flex-row sm:text-left">
+          <Image
+            src="/gave.svg"
+            alt=""
+            width={319}
+            height={281}
+            unoptimized
+            className="h-auto w-28 shrink-0 sm:w-32"
+          />
+          <div>
+            <h2 className="font-semibold">Premier!</h2>
+            <p className="text-sm text-zinc-500">
+              Premien for høyeste score er en valgfri landslagsdrakt
+              (voksen/barn) fra Unisport. Det blir også trøstepremie til andre-
+              og tredjeplass.
+            </p>
+          </div>
+        </div>
       </main>
 
       <footer className="flex flex-col items-center gap-2 p-6 text-center">

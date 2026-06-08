@@ -328,7 +328,7 @@ export default function TippeSkjema({
           undertittel={`Klikk vinneren i hver kamp · ${antallVinnere}/${sluttspill.length}`}
         />
         {mester && (
-          <p className="rounded-lg bg-amber-50 px-4 py-3 text-center font-semibold text-amber-800">
+          <p className="rounded-lg bg-emerald-100 px-4 py-3 text-center font-semibold text-emerald-900">
             🏆 Din verdensmester: {mester.flagg} {mester.navn}
           </p>
         )}

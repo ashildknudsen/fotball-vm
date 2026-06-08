@@ -71,20 +71,15 @@ export default async function ResultatSide() {
             <li key={r.id}>
               <Link
                 href={`/resultater/${r.id}`}
-                className={`flex items-center gap-3 rounded-lg px-4 py-3 transition hover:ring-2 hover:ring-[#5239ba]/30 ${
-                  r.erMeg
-                    ? "bg-emerald-50 ring-1 ring-emerald-200"
-                    : "bg-zinc-50"
-                }`}
+                className={`flex items-center gap-3 rounded-lg px-4 py-3 transition ${radKlasse(
+                  i,
+                )} ${r.erMeg ? "ring-1 ring-[#5239ba]/70" : ""}`}
               >
                 <span className="w-6 text-center text-sm font-bold text-zinc-400">
                   {plassering(i)}
                 </span>
                 <span className="flex-1 font-medium">
                   {r.navn}
-                  {r.erMeg && (
-                    <span className="ml-2 text-xs text-emerald-600">(deg)</span>
-                  )}
                   {!r.levert && (
                     <span className="ml-2 text-xs text-zinc-400">kladd</span>
                   )}
@@ -110,4 +105,11 @@ function plassering(indeks: number): string {
   if (indeks === 1) return "🥈";
   if (indeks === 2) return "🥉";
   return `${indeks + 1}.`;
+}
+
+// Bakgrunnsfarge per plassering: topp tre lyst lilla, resten grå.
+// Mørkere på hover.
+function radKlasse(indeks: number): string {
+  if (indeks <= 2) return "bg-[#5239ba]/5 hover:bg-[#5239ba]/15";
+  return "bg-zinc-50";
 }
