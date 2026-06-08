@@ -1,0 +1,93 @@
+import {
+  type RundeType,
+  type Sluttspillkamp,
+  finnKamp,
+  finnLag,
+  sluttspill,
+} from "@/data/turnering";
+import { type TippData, deltakerePåKamp } from "@/lib/tipp";
+
+// Kolonnene i selve treet (bronsefinalen vises separat).
+const kolonner: { runde: RundeType; tittel: string }[] = [
+  { runde: "16-delsfinale", tittel: "16-delsfinale" },
+  { runde: "8-delsfinale", tittel: "Åttendelsfinale" },
+  { runde: "kvartfinale", tittel: "Kvartfinale" },
+  { runde: "semifinale", tittel: "Semifinale" },
+  { runde: "finale", tittel: "Finale" },
+];
+
+// Tegner et sluttspill-tre ut fra et oppsett. Read-only.
+export default function Sluttspilltre({ tipp }: { tipp: TippData }) {
+  const mester = tipp.vinnere?.["104"] ? finnLag(tipp.vinnere["104"]) : undefined;
+  const bronse = finnKamp(103);
+
+  return (
+    <div className="flex flex-col gap-4">
+      {mester && (
+        <p className="rounded-lg bg-amber-50 px-4 py-3 text-center font-semibold text-amber-800">
+          🏆 Verdensmester: {mester.flagg} {mester.navn}
+        </p>
+      )}
+
+      <div className="overflow-x-auto pb-2">
+        <div className="flex min-w-max gap-4">
+          {kolonner.map(({ runde, tittel }) => (
+            <div key={runde} className="flex flex-col">
+              <h4 className="mb-2 text-center text-xs font-semibold text-zinc-400">
+                {tittel}
+              </h4>
+              <div className="flex flex-1 flex-col justify-around gap-3">
+                {sluttspill
+                  .filter((k) => k.runde === runde)
+                  .map((kamp) => (
+                    <Kampkort key={kamp.nummer} kamp={kamp} tipp={tipp} />
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {bronse && (
+        <div className="max-w-xs">
+          <h4 className="mb-2 text-xs font-semibold text-zinc-400">
+            Bronsefinale
+          </h4>
+          <Kampkort kamp={bronse} tipp={tipp} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Kampkort({ kamp, tipp }: { kamp: Sluttspillkamp; tipp: TippData }) {
+  const { hjemme, borte } = deltakerePåKamp(kamp.nummer, tipp);
+  const vinner = tipp.vinnere?.[String(kamp.nummer)] ?? null;
+  return (
+    <div className="w-44 rounded-lg border border-zinc-200 p-2">
+      <Lagrad lagId={hjemme} vinner={vinner !== null && vinner === hjemme} />
+      <Lagrad lagId={borte} vinner={vinner !== null && vinner === borte} />
+    </div>
+  );
+}
+
+function Lagrad({
+  lagId,
+  vinner,
+}: {
+  lagId: string | null;
+  vinner: boolean;
+}) {
+  const lag = lagId ? finnLag(lagId) : undefined;
+  return (
+    <div
+      className={`flex items-center gap-2 rounded px-1 py-1 text-sm ${
+        vinner ? "font-semibold text-zinc-900" : "text-zinc-400"
+      }`}
+    >
+      <span className="text-base">{lag?.flagg ?? "🛡️"}</span>
+      <span className="flex-1 truncate">{lag?.navn ?? "Ubestemt"}</span>
+      {vinner && <span className="text-[#5239ba]">✓</span>}
+    </div>
+  );
+}

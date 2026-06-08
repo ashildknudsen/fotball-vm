@@ -1,0 +1,102 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { hentEllerOpprettProfil } from "@/lib/profil";
+import { lagAdminKlient } from "@/lib/supabase/admin";
+import { type TippData, beregnPoeng } from "@/lib/tipp";
+import { type Gruppe, grupper, finnLag } from "@/data/turnering";
+import Sluttspilltre from "@/components/Sluttspilltre";
+
+export default async function DeltakerSide({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const meg = await hentEllerOpprettProfil();
+  const db = lagAdminKlient();
+
+  const [{ data: profil }, { data: tippRad }, { data: fasitRad }] =
+    await Promise.all([
+      db.from("profil").select("visningsnavn").eq("id", id).maybeSingle(),
+      db.from("tipp").select("data, levert").eq("bruker_id", id).maybeSingle(),
+      db.from("fasit").select("data").eq("id", 1).maybeSingle(),
+    ]);
+
+  if (!profil) notFound();
+
+  const tipp: TippData = (tippRad?.data as TippData) ?? {};
+  const fasit: TippData = (fasitRad?.data as TippData) ?? {};
+  const poeng = beregnPoeng(tipp, fasit);
+  const harTippet = Boolean(tippRad);
+
+  return (
+    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-8">
+      <Link
+        href="/resultater"
+        className="text-sm text-zinc-500 hover:text-zinc-800"
+      >
+        ← Til resultattavlen
+      </Link>
+
+      <header className="flex items-baseline justify-between gap-3">
+        <h1 className="text-2xl font-bold">
+          {profil.visningsnavn}
+          {id === meg.id && (
+            <span className="ml-2 text-sm font-normal text-emerald-600">
+              (deg)
+            </span>
+          )}
+        </h1>
+        <span className="text-lg font-bold tabular-nums">
+          {poeng}
+          <span className="ml-1 text-sm font-normal text-zinc-400">poeng</span>
+        </span>
+      </header>
+
+      {!harTippet ? (
+        <p className="rounded-lg bg-zinc-50 px-4 py-3 text-zinc-500">
+          Denne deltakeren har ikke levert noe tips ennå.
+        </p>
+      ) : (
+        <>
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-bold">Videre fra gruppene</h2>
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {grupper.map((gruppe) => (
+                <Gruppekort key={gruppe} gruppe={gruppe} tipp={tipp} />
+              ))}
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-bold">Sluttspill</h2>
+            <Sluttspilltre tipp={tipp} />
+          </section>
+        </>
+      )}
+    </main>
+  );
+}
+
+function Gruppekort({ gruppe, tipp }: { gruppe: Gruppe; tipp: TippData }) {
+  const g = tipp.gruppe?.[gruppe];
+  const vinner = g?.vinner ? finnLag(g.vinner) : undefined;
+  const toer = g?.toer ? finnLag(g.toer) : undefined;
+  return (
+    <div className="rounded-lg border border-zinc-200 p-3">
+      <h3 className="mb-1 text-xs font-semibold text-zinc-400">
+        Gruppe {gruppe}
+      </h3>
+      <ol className="flex flex-col gap-1 text-sm">
+        <li className="flex items-center gap-2">
+          <span className="text-zinc-400">1.</span>
+          <span>{vinner ? `${vinner.flagg} ${vinner.navn}` : "—"}</span>
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="text-zinc-400">2.</span>
+          <span>{toer ? `${toer.flagg} ${toer.navn}` : "—"}</span>
+        </li>
+      </ol>
+    </div>
+  );
+}

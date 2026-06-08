@@ -4,6 +4,7 @@ import { lagAdminKlient } from "@/lib/supabase/admin";
 import { type TippData, beregnPoeng } from "@/lib/tipp";
 
 type Rad = {
+  id: string;
   navn: string;
   poeng: number;
   levert: boolean;
@@ -31,6 +32,7 @@ export default async function ResultatSide() {
 
   const rader: Rad[] = (tippRader ?? [])
     .map((t) => ({
+      id: t.bruker_id as string,
       navn: navnFor.get(t.bruker_id as string) ?? "Ukjent",
       poeng: beregnPoeng(t.data as TippData, fasit),
       levert: Boolean(t.levert),
@@ -57,30 +59,35 @@ export default async function ResultatSide() {
       ) : (
         <ol className="flex flex-col gap-1">
           {rader.map((r, i) => (
-            <li
-              key={i}
-              className={`flex items-center gap-3 rounded-lg px-4 py-3 ${
-                r.erMeg ? "bg-emerald-50 ring-1 ring-emerald-200" : "bg-zinc-50"
-              }`}
-            >
-              <span className="w-6 text-center text-sm font-bold text-zinc-400">
-                {plassering(i)}
-              </span>
-              <span className="flex-1 font-medium">
-                {r.navn}
-                {r.erMeg && (
-                  <span className="ml-2 text-xs text-emerald-600">(deg)</span>
-                )}
-                {!r.levert && (
-                  <span className="ml-2 text-xs text-zinc-400">kladd</span>
-                )}
-              </span>
-              <span className="text-lg font-bold tabular-nums">
-                {r.poeng}
-                <span className="ml-1 text-xs font-normal text-zinc-400">
-                  p
+            <li key={r.id}>
+              <Link
+                href={`/resultater/${r.id}`}
+                className={`flex items-center gap-3 rounded-lg px-4 py-3 transition hover:ring-2 hover:ring-[#5239ba]/30 ${
+                  r.erMeg
+                    ? "bg-emerald-50 ring-1 ring-emerald-200"
+                    : "bg-zinc-50"
+                }`}
+              >
+                <span className="w-6 text-center text-sm font-bold text-zinc-400">
+                  {plassering(i)}
                 </span>
-              </span>
+                <span className="flex-1 font-medium">
+                  {r.navn}
+                  {r.erMeg && (
+                    <span className="ml-2 text-xs text-emerald-600">(deg)</span>
+                  )}
+                  {!r.levert && (
+                    <span className="ml-2 text-xs text-zinc-400">kladd</span>
+                  )}
+                </span>
+                <span className="text-lg font-bold tabular-nums">
+                  {r.poeng}
+                  <span className="ml-1 text-xs font-normal text-zinc-400">
+                    p
+                  </span>
+                </span>
+                <span className="text-zinc-300">›</span>
+              </Link>
             </li>
           ))}
         </ol>

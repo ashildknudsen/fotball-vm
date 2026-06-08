@@ -40,24 +40,20 @@ export default async function Hjemmeside() {
         )}
 
         <nav className="grid w-full gap-4 sm:grid-cols-2">
-          <Link
+          <HandlingsKort
             href="/tipp"
-            className="group flex flex-col items-start gap-1 rounded-xl border border-zinc-200 p-5 text-left transition hover:border-zinc-400 hover:shadow-sm"
-          >
-            <h2 className="font-semibold">👉 Bli med å tippe</h2>
-            <p className="text-sm text-zinc-500">
-              Tipp hvem som går videre fra gruppene og hele veien til finalen.
-            </p>
-            <span className="mt-3 w-full rounded-lg bg-[#5239ba] px-4 py-2 text-center text-sm font-medium text-white transition group-hover:bg-[#43309c]">
-              Sett i gang
-            </span>
-          </Link>
-
-          <Kort
+            emoji="👉"
+            tittel="Bli med å tippe"
+            beskrivelse="Tipp hvem som går videre fra gruppene og hele veien til finalen."
+            knapp="Sett i gang"
+          />
+          <HandlingsKort
             href="/resultater"
+            emoji="🏆"
             tittel="Se hvem som leder"
             beskrivelse="Følg poengtavlen underveis i mesterskapet."
-            emoji="🏆"
+            knapp="Se alle resultater"
+            sekundær
           />
         </nav>
       </main>
@@ -84,27 +80,38 @@ export default async function Hjemmeside() {
   );
 }
 
-function Kort({
+function HandlingsKort({
   href,
+  emoji,
   tittel,
   beskrivelse,
-  emoji,
+  knapp,
+  sekundær = false,
 }: {
   href: string;
+  emoji: string;
   tittel: string;
   beskrivelse: string;
-  emoji?: string;
+  knapp: string;
+  sekundær?: boolean;
 }) {
+  const knappestil = sekundær
+    ? "border border-[#5239ba] bg-white text-[#5239ba] group-hover:bg-[#5239ba]/5"
+    : "bg-[#5239ba] text-white group-hover:bg-[#43309c]";
   return (
     <Link
       href={href}
-      className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-5 text-left transition hover:border-zinc-400 hover:shadow-sm"
+      className="group flex flex-col items-start gap-1 rounded-xl border border-zinc-200 p-5 text-left transition hover:border-zinc-400 hover:shadow-sm"
     >
-      <span className="font-semibold">
-        {emoji ? `${emoji} ` : ""}
-        {tittel}
+      <h2 className="font-semibold">
+        {emoji} {tittel}
+      </h2>
+      <p className="text-sm text-zinc-500">{beskrivelse}</p>
+      <span
+        className={`mt-3 w-full rounded-lg px-4 py-2 text-center text-sm font-medium transition ${knappestil}`}
+      >
+        {knapp}
       </span>
-      <span className="text-sm text-zinc-500">{beskrivelse}</span>
     </Link>
   );
 }
