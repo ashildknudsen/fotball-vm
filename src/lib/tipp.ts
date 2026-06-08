@@ -174,8 +174,21 @@ export function beregnPoeng(tipp: TippData, fasit: TippData): number {
   return poeng;
 }
 
-// Er tippefristen passert? Settes via env (ISO-dato), default kickoff 2026.
+// Tippefristen som dato. Settes via env (ISO-dato), default kickoff 2026.
+export function tippefrist(): Date {
+  return new Date(process.env.TIPPEFRIST ?? "2026-06-11T16:00:00Z");
+}
+
+// Er tippefristen passert?
 export function tippingErLåst(): boolean {
-  const frist = process.env.TIPPEFRIST ?? "2026-06-11T16:00:00Z";
-  return new Date() >= new Date(frist);
+  return new Date() >= tippefrist();
+}
+
+// Tippefristen som lesbar norsk tekst, f.eks. "11. juni 2026 kl. 18:00".
+export function tippefristTekst(): string {
+  return new Intl.DateTimeFormat("nb-NO", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "Europe/Oslo",
+  }).format(tippefrist());
 }

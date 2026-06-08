@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/oppdater-fasit",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

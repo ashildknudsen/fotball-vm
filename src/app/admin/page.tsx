@@ -4,6 +4,7 @@ import { hentEllerOpprettProfil, erAdmin } from "@/lib/profil";
 import { lagAdminKlient } from "@/lib/supabase/admin";
 import { type TippData } from "@/lib/tipp";
 import TippeSkjema from "@/app/tipp/TippeSkjema";
+import OppdaterFraApi from "./OppdaterFraApi";
 import { lagreFasit } from "./handlinger";
 
 export default async function AdminSide() {
@@ -33,6 +34,8 @@ export default async function AdminSide() {
           Poengene på resultattavlen oppdateres automatisk.
         </p>
       </div>
+
+      <OppdaterFraApi />
 
       <TippeSkjema
         startTipp={fasit}
