@@ -34,7 +34,6 @@ export async function GET(request: Request) {
     // ennå ikke er utledet beholdes.
     const flettet = sanérTipp({
       gruppe: { ...(eksisterende.gruppe ?? {}), ...(utledet.gruppe ?? {}) },
-      treere: { ...(eksisterende.treere ?? {}), ...(utledet.treere ?? {}) },
       vinnere: { ...(eksisterende.vinnere ?? {}), ...(utledet.vinnere ?? {}) },
     });
 

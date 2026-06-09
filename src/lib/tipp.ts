@@ -4,25 +4,52 @@ import {
   type Sluttspillkamp,
   finalistBonus,
   finnKamp,
+  grupper,
   lagIGruppe,
   poengPerRunde,
   sluttspill,
 } from "@/data/turnering";
 
+// Antall treere som går videre til sluttspillet.
+export const MAKS_TREERE = 8;
+
 // Formen på en tippekupong (lagres som JSON i databasen).
-export type GruppeTipp = { vinner?: string; toer?: string };
+// Per gruppe velger man 1.-plass (vinner), 2.-plass (toer) og evt. en treer
+// (kun 8 grupper kan ha en treer – de 8 som går videre).
+export type GruppeTipp = { vinner?: string; toer?: string; treer?: string };
 
 export type TippData = {
-  // Hvilke lag som går videre fra hver gruppe (1.- og 2.-plass).
   gruppe?: Partial<Record<Gruppe, GruppeTipp>>;
-  // Valgt lag til hver treer-plass i 16-delsfinalen. Nøkkel = kampnummer.
-  treere?: Record<string, string>;
   // Tippet vinner av hver sluttspillkamp. Nøkkel = kampnummer.
   vinnere?: Record<string, string>;
 };
 
+// Gruppene (i rekkefølge) der det er markert en treer.
+export function treerGrupper(tipp: TippData): Gruppe[] {
+  return grupper.filter((g) => tipp.gruppe?.[g]?.treer);
+}
+
+// Alle treer-plasser i sluttspillet (kamper der borte-laget er en treer),
+// i kampnummer-rekkefølge.
+export function treerPlasser(): Sluttspillkamp[] {
+  return sluttspill.filter((k) => k.borte.type === "treer");
+}
+
+// Tildeler de markerte treerne til sluttspill-plassene i fast rekkefølge.
+// Returnerer kampnummer -> lag-id.
+export function treerTildeling(tipp: TippData): Record<string, string> {
+  const plasser = treerPlasser();
+  const lag = treerGrupper(tipp)
+    .map((g) => tipp.gruppe![g]!.treer!)
+    .slice(0, plasser.length);
+  const tildeling: Record<string, string> = {};
+  lag.forEach((lagId, i) => {
+    tildeling[String(plasser[i].nummer)] = lagId;
+  });
+  return tildeling;
+}
+
 // Slår opp hvilket lag-id en plassreferanse peker på, gitt en tippekupong.
-// Returnerer null hvis tipperen ikke har fylt ut det som trengs ennå.
 export function løsReferanse(
   ref: Plassreferanse,
   tipp: TippData,
@@ -34,8 +61,7 @@ export function løsReferanse(
       return (ref.plassering === 1 ? g.vinner : g.toer) ?? null;
     }
     case "treer":
-      // Treer-plasser identifiseres av kampen de tilhører – håndteres
-      // i deltakerePåKamp der vi kjenner kampnummeret.
+      // Håndteres i deltakerePåKamp der vi kjenner kampnummeret.
       return null;
     case "vinner":
       return tipp.vinnere?.[String(ref.kamp)] ?? null;
@@ -58,70 +84,40 @@ export function deltakerePåKamp(
   const kamp = finnKamp(kampnummer);
   if (!kamp) return { hjemme: null, borte: null };
 
-  const løs = (ref: Plassreferanse, erBorte: boolean): string | null => {
-    if (ref.type === "treer") {
-      return tipp.treere?.[String(kampnummer)] ?? null;
-    }
+  const tildeling = treerTildeling(tipp);
+  const løs = (ref: Plassreferanse): string | null => {
+    if (ref.type === "treer") return tildeling[String(kampnummer)] ?? null;
     return løsReferanse(ref, tipp);
   };
 
-  return {
-    hjemme: løs(kamp.hjemme, false),
-    borte: løs(kamp.borte, true),
-  };
+  return { hjemme: løs(kamp.hjemme), borte: løs(kamp.borte) };
 }
 
-// Alle treer-plasser som må fylles ut (kamper der borte-laget er en treer).
-export function treerPlasser(): Sluttspillkamp[] {
-  return sluttspill.filter((k) => k.borte.type === "treer");
-}
-
-// Lag som lovlig kan velges til treer-plassen i en gitt kamp: lag fra de
-// tillatte gruppene som tipperen ikke allerede har sendt videre som 1. eller
-// 2. i sin egen gruppe.
-export function gyldigeTreereForKamp(
-  kampnummer: number,
-  tipp: TippData,
-): string[] {
-  const kamp = finnKamp(kampnummer);
-  if (!kamp || kamp.borte.type !== "treer") return [];
-
-  const resultat: string[] = [];
-  for (const gruppe of kamp.borte.muligeGrupper) {
-    const valgt = tipp.gruppe?.[gruppe];
-    for (const lag of lagIGruppe(gruppe)) {
-      if (lag.id !== valgt?.vinner && lag.id !== valgt?.toer) {
-        resultat.push(lag.id);
-      }
-    }
-  }
-  return resultat;
-}
-
-// Rydder vekk valg som er blitt ugyldige etter endringer lenger opp i treet:
-// treere som ikke lenger er lovlige eller er valgt to ganger, og kampvinnere
-// som ikke lenger er en av deltakerne i kampen.
+// Rydder vekk ugyldige valg: treere som ikke hører til gruppa eller alt er
+// 1./2., treere ut over maksgrensen, og kampvinnere som ikke lenger er en
+// av deltakerne i kampen.
 export function sanérTipp(input: TippData): TippData {
   const tipp: TippData = {
-    gruppe: { ...(input.gruppe ?? {}) },
-    treere: { ...(input.treere ?? {}) },
+    gruppe: Object.fromEntries(
+      Object.entries(input.gruppe ?? {}).map(([g, v]) => [g, { ...v }]),
+    ),
     vinnere: { ...(input.vinnere ?? {}) },
   };
 
-  const brukteTreere = new Set<string>();
-  for (const plass of treerPlasser()) {
-    const nøkkel = String(plass.nummer);
-    const valgt = tipp.treere![nøkkel];
-    if (!valgt) continue;
-    const gyldige = gyldigeTreereForKamp(plass.nummer, tipp);
-    if (!gyldige.includes(valgt) || brukteTreere.has(valgt)) {
-      delete tipp.treere![nøkkel];
+  let antallTreere = 0;
+  for (const gruppe of grupper) {
+    const g = tipp.gruppe![gruppe];
+    if (!g?.treer) continue;
+    const iGruppa = lagIGruppe(gruppe).some((l) => l.id === g.treer);
+    const erAlleredeVidere = g.treer === g.vinner || g.treer === g.toer;
+    if (!iGruppa || erAlleredeVidere || antallTreere >= MAKS_TREERE) {
+      delete g.treer;
     } else {
-      brukteTreere.add(valgt);
+      antallTreere++;
     }
   }
 
-  // Behandles i kampnummer-rekkefølge slik at vinnere er ryddet før de
+  // Vinnere behandles i kampnummer-rekkefølge slik at de er ryddet før de
   // brukes til å løse ut senere kamper.
   for (const kamp of sluttspill) {
     const nøkkel = String(kamp.nummer);
@@ -140,26 +136,23 @@ export function sanérTipp(input: TippData): TippData {
 export function beregnPoeng(tipp: TippData, fasit: TippData): number {
   let poeng = 0;
 
-  // Gruppespill: poeng per lag som er riktig tippet videre (uavhengig av
-  // om det ble 1.- eller 2.-plass).
   for (const gruppe of Object.keys(fasit.gruppe ?? {}) as Gruppe[]) {
+    // Gruppespill: poeng per lag riktig videre (1.- eller 2.-plass).
     const fasitLag = new Set(
       [fasit.gruppe?.[gruppe]?.vinner, fasit.gruppe?.[gruppe]?.toer].filter(
         Boolean,
       ) as string[],
     );
-    const tippetLag = [
+    for (const lag of [
       tipp.gruppe?.[gruppe]?.vinner,
       tipp.gruppe?.[gruppe]?.toer,
-    ].filter(Boolean) as string[];
-    for (const lag of tippetLag) {
-      if (fasitLag.has(lag)) poeng += poengPerRunde.gruppe;
+    ]) {
+      if (lag && fasitLag.has(lag)) poeng += poengPerRunde.gruppe;
     }
-  }
 
-  // Treer-plasser: poeng for riktig treer på riktig plass.
-  for (const [kampnummer, fasitLag] of Object.entries(fasit.treere ?? {})) {
-    if (tipp.treere?.[kampnummer] === fasitLag) {
+    // Treer: poeng hvis riktig lag er markert som treer i gruppa.
+    const fasitTreer = fasit.gruppe?.[gruppe]?.treer;
+    if (fasitTreer && tipp.gruppe?.[gruppe]?.treer === fasitTreer) {
       poeng += poengPerRunde.gruppe;
     }
   }
@@ -197,7 +190,7 @@ export function tippingErLåst(): boolean {
   return new Date() >= tippefrist();
 }
 
-// Tippefristen som lesbar norsk tekst, f.eks. "11. juni 2026 kl. 18:00".
+// Tippefristen som lesbar norsk tekst, f.eks. "11. juni 2026 kl. 21:00".
 export function tippefristTekst(): string {
   return new Intl.DateTimeFormat("nb-NO", {
     dateStyle: "long",

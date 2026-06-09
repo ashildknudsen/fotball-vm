@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PencilLine } from "lucide-react";
 import { hentEllerOpprettProfil } from "@/lib/profil";
 import { lagAdminKlient } from "@/lib/supabase/admin";
 import { type TippData, beregnPoeng } from "@/lib/tipp";
@@ -53,8 +54,9 @@ export default async function ResultatSide() {
           </li>
           <li>
             <strong>Sluttspill:</strong> poeng for hver riktig tippet kampvinner
-            – mer jo lenger ut: 16-delsfinale 2, åttendelsfinale 3, kvartfinale
-            5, semifinale 8, bronsefinale 10, finale 15.
+            – flere poeng jo lenger ut: 16-delsfinale 2 poeng, åttendelsfinale 3
+            poeng, kvartfinale 5 poeng, semifinale 8 poeng, bronsefinale 10
+            poeng, finale 15 poeng.
           </li>
           <li>
             <strong>Bonus:</strong> +5 poeng for hvert lag du har riktig i
@@ -78,10 +80,13 @@ export default async function ResultatSide() {
                 <span className="w-6 text-center text-sm font-bold text-zinc-400">
                   {plassering(i)}
                 </span>
-                <span className="flex-1 font-medium">
+                <span className="flex flex-1 items-center gap-2 font-medium">
                   {r.navn}
                   {!r.levert && (
-                    <span className="ml-2 text-xs text-zinc-400">kladd</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#ddd8fe] px-2 py-0.5 text-xs font-medium text-[#5239ba]">
+                      <PencilLine className="h-3 w-3" />
+                      Kladd
+                    </span>
                   )}
                 </span>
                 <span className="text-lg font-bold tabular-nums">

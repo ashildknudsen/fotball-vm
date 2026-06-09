@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Check, PencilLine } from "lucide-react";
 import { notFound } from "next/navigation";
 import { hentEllerOpprettProfil } from "@/lib/profil";
 import { lagAdminKlient } from "@/lib/supabase/admin";
@@ -12,7 +13,7 @@ export default async function DeltakerSide({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const meg = await hentEllerOpprettProfil();
+  await hentEllerOpprettProfil();
   const db = lagAdminKlient();
 
   const [{ data: profil }, { data: tippRad }, { data: fasitRad }] =
@@ -28,6 +29,7 @@ export default async function DeltakerSide({
   const fasit: TippData = (fasitRad?.data as TippData) ?? {};
   const poeng = beregnPoeng(tipp, fasit);
   const harTippet = Boolean(tippRad);
+  const erLevert = tippRad?.levert ?? false;
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-8">
@@ -38,16 +40,23 @@ export default async function DeltakerSide({
         ← Til resultattavlen
       </Link>
 
-      <header className="flex items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-bold">
-          {profil.visningsnavn}
-          {id === meg.id && (
-            <span className="ml-2 text-sm font-normal text-emerald-600">
-              (deg)
-            </span>
-          )}
-        </h1>
-        <span className="text-lg font-bold tabular-nums">
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">{profil.visningsnavn}</h1>
+          {harTippet &&
+            (erLevert ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                Levert
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#ddd8fe] px-2.5 py-1 text-xs font-medium text-[#5239ba]">
+                <PencilLine className="h-3.5 w-3.5" />
+                Kladd
+              </span>
+            ))}
+        </div>
+        <span className="shrink-0 text-lg font-bold tabular-nums">
           {poeng}
           <span className="ml-1 text-sm font-normal text-zinc-400">poeng</span>
         </span>

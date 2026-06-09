@@ -1,10 +1,9 @@
 import { grupper, lagIGruppe, sluttspill } from "@/data/turnering";
 import {
   type TippData,
+  MAKS_TREERE,
   deltakerePåKamp,
-  gyldigeTreereForKamp,
   sanérTipp,
-  treerPlasser,
 } from "@/lib/tipp";
 
 // Genererer en komplett tippekupong. `nøkkel` gir hvert lag et tall som
@@ -25,27 +24,26 @@ function generer(nøkkel: (lagId: string) => number): TippData {
     return beste;
   };
 
-  const tipp: TippData = { gruppe: {}, treere: {}, vinnere: {} };
+  const tipp: TippData = { gruppe: {}, vinnere: {} };
 
-  // Gruppespill: sorter lagene etter nøkkel, topp 2 går videre.
+  // Gruppespill: sorter lagene etter nøkkel. Topp 2 går videre, og vi husker
+  // 3.-plassen som treer-kandidat.
+  const treerKandidater: { gruppe: (typeof grupper)[number]; lagId: string; k: number }[] = [];
   for (const gruppe of grupper) {
     const sortert = lagIGruppe(gruppe)
       .map((l) => ({ id: l.id, k: nøkkel(l.id) }))
       .sort((a, b) => b.k - a.k);
     tipp.gruppe![gruppe] = { vinner: sortert[0].id, toer: sortert[1].id };
+    treerKandidater.push({ gruppe, lagId: sortert[2].id, k: nøkkel(sortert[2].id) });
   }
 
-  // Treer-plasser: velg ett gyldig (ubrukt) lag per plass.
-  const brukteTreere = new Set<string>();
-  for (const plass of treerPlasser()) {
-    const kandidater = gyldigeTreereForKamp(plass.nummer, tipp).filter(
-      (id) => !brukteTreere.has(id),
-    );
-    if (kandidater.length === 0) continue;
-    const valgt = velgHøyeste(kandidater);
-    tipp.treere![String(plass.nummer)] = valgt;
-    brukteTreere.add(valgt);
-  }
+  // De 8 «beste» treerne (etter nøkkel) markeres som treere.
+  treerKandidater
+    .sort((a, b) => b.k - a.k)
+    .slice(0, MAKS_TREERE)
+    .forEach((k) => {
+      tipp.gruppe![k.gruppe]!.treer = k.lagId;
+    });
 
   // Sluttspill: velg vinner i hver kamp (i rekkefølge, så senere kamper løses).
   for (const kamp of sluttspill) {

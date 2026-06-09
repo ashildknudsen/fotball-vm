@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Check } from "lucide-react";
 import {
   type Gruppe,
   type Plassreferanse,
@@ -13,10 +14,10 @@ import {
 } from "@/data/turnering";
 import {
   type TippData,
+  MAKS_TREERE,
   deltakerePåKamp,
-  gyldigeTreereForKamp,
   sanérTipp,
-  treerPlasser,
+  treerGrupper,
 } from "@/lib/tipp";
 import { genererTilfeldig, genererFraRanking } from "@/lib/generator";
 
@@ -111,27 +112,23 @@ export default function TippeSkjema({
 
   function velgIGruppe(gruppe: Gruppe, lagId: string) {
     const g = tipp.gruppe?.[gruppe];
-    const alleredeValgt = g?.vinner === lagId || g?.toer === lagId;
-    const harLedigPlass = !g?.vinner || !g?.toer;
-    if (!alleredeValgt && harLedigPlass) feirNorge(lagId);
+    const erValgt =
+      g?.vinner === lagId || g?.toer === lagId || g?.treer === lagId;
+    const antallTreereNå = treerGrupper(tipp).length;
+    const harLedigPlass =
+      !g?.vinner || !g?.toer || (!g?.treer && antallTreereNå < MAKS_TREERE);
+    if (!erValgt && harLedigPlass) feirNorge(lagId);
 
     oppdater((t) => {
       t.gruppe ??= {};
-      const g = (t.gruppe[gruppe] ??= {});
-      if (g.vinner === lagId) delete g.vinner;
-      else if (g.toer === lagId) delete g.toer;
-      else if (!g.vinner) g.vinner = lagId;
-      else if (!g.toer) g.toer = lagId;
-      // Begge plasser tatt – klikk på et tredje lag ignoreres.
-    });
-  }
-
-  function velgTreer(kampnummer: number, lagId: string) {
-    feirNorge(lagId);
-    oppdater((t) => {
-      t.treere ??= {};
-      if (lagId) t.treere[String(kampnummer)] = lagId;
-      else delete t.treere[String(kampnummer)];
+      const gg = (t.gruppe[gruppe] ??= {});
+      if (gg.vinner === lagId) delete gg.vinner;
+      else if (gg.toer === lagId) delete gg.toer;
+      else if (gg.treer === lagId) delete gg.treer;
+      else if (!gg.vinner) gg.vinner = lagId;
+      else if (!gg.toer) gg.toer = lagId;
+      else if (!gg.treer && antallTreereNå < MAKS_TREERE) gg.treer = lagId;
+      // Ellers (alt fylt / 8 treere brukt): klikket ignoreres.
     });
   }
 
@@ -145,11 +142,13 @@ export default function TippeSkjema({
 
   function lagre(somLevert: boolean) {
     start(async () => {
-      const res = await påLagre(tipp, somLevert || levert);
+      const res = await påLagre(tipp, somLevert);
       setMelding(res.melding);
-      if (res.ok && somLevert) {
-        setLevert(true);
-        if (tipp.vinnere?.["104"] === "norge") feirNorgeVerdensmester();
+      if (res.ok) {
+        setLevert(somLevert);
+        if (somLevert && tipp.vinnere?.["104"] === "norge") {
+          feirNorgeVerdensmester();
+        }
       }
     });
   }
@@ -158,9 +157,7 @@ export default function TippeSkjema({
   const antallGruppe = grupper.filter(
     (g) => tipp.gruppe?.[g]?.vinner && tipp.gruppe?.[g]?.toer,
   ).length;
-  const antallTreere = treerPlasser().filter(
-    (p) => tipp.treere?.[String(p.nummer)],
-  ).length;
+  const antallTreere = treerGrupper(tipp).length;
   const antallVinnere = sluttspill.filter(
     (k) => tipp.vinnere?.[String(k.nummer)],
   ).length;
@@ -218,113 +215,65 @@ export default function TippeSkjema({
       <section className="flex flex-col gap-4">
         <Seksjonstittel
           tittel="1 · Gruppespill"
-          undertittel={`Velg hvem som går videre (1. og 2.) · ${antallGruppe}/12 grupper`}
+          undertittel={`Velg 1.- og 2.-plass, og marker treere (${antallTreere}/${MAKS_TREERE}) · ${antallGruppe}/12 grupper`}
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          {grupper.map((gruppe) => (
-            <div
-              key={gruppe}
-              className="rounded-xl border border-zinc-200 p-3"
-            >
-              <h3 className="mb-2 text-sm font-semibold text-zinc-500">
-                Gruppe {gruppe}
-              </h3>
-              <ul className="flex flex-col gap-1.5">
-                {lagIGruppe(gruppe).map((l) => {
-                  const g = tipp.gruppe?.[gruppe];
-                  const plass =
-                    g?.vinner === l.id ? 1 : g?.toer === l.id ? 2 : null;
-                  return (
-                    <li key={l.id}>
-                      <button
-                        type="button"
-                        disabled={!kanEndre}
-                        onClick={() => velgIGruppe(gruppe, l.id)}
-                        className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition ${
-                          plass
-                            ? "border-emerald-500 bg-emerald-50 font-medium"
-                            : "border-zinc-200 hover:border-zinc-300"
-                        } ${kanEndre ? "" : "cursor-default opacity-90"}`}
-                      >
-                        <span className="text-lg">{l.flagg}</span>
-                        <span className="flex-1">{l.navn}</span>
-                        {plass && (
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
-                            {plass}
-                          </span>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Treere ── */}
-      <section className="flex flex-col gap-4">
-        <Seksjonstittel
-          tittel="2 · De åtte beste treerne"
-          undertittel={`Velg hvilke treere som tar plassene i 16-delsfinalen · ${antallTreere}/8`}
-        />
-        <div className="grid gap-3 sm:grid-cols-2">
-          {treerPlasser().map((plass) => {
-            const nøkkel = String(plass.nummer);
-            const valgt = tipp.treere?.[nøkkel] ?? "";
-            const brukteIAndre = new Set(
-              Object.entries(tipp.treere ?? {})
-                .filter(([k]) => k !== nøkkel)
-                .map(([, v]) => v),
-            );
-            const valg = gyldigeTreereForKamp(plass.nummer, tipp).filter(
-              (id) => id === valgt || !brukteIAndre.has(id),
-            );
-            const grupperTekst =
-              plass.borte.type === "treer"
-                ? plass.borte.muligeGrupper.join("/")
-                : "";
+          {grupper.map((gruppe) => {
+            const g = tipp.gruppe?.[gruppe];
+            const treerNr = g?.treer
+              ? treerGrupper(tipp).indexOf(gruppe) + 1
+              : 0;
             return (
-              <label
-                key={plass.nummer}
-                className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-3"
-              >
-                <span className="text-xs font-medium text-zinc-500">
-                  Kamp {plass.nummer} · treer fra gruppe {grupperTekst}
-                </span>
-                <select
-                  disabled={!kanEndre}
-                  value={valgt}
-                  onChange={(e) => velgTreer(plass.nummer, e.target.value)}
-                  className="rounded-lg border border-zinc-300 bg-white px-2 py-2 text-sm disabled:opacity-90"
-                >
-                  <option value="">— velg lag —</option>
-                  {valg.map((id) => {
-                    const l = finnLag(id)!;
+              <div key={gruppe} className="rounded-xl border border-zinc-200 p-3">
+                <h3 className="mb-2 text-sm font-semibold text-zinc-500">
+                  Gruppe {gruppe}
+                </h3>
+                <ul className="flex flex-col gap-1.5">
+                  {lagIGruppe(gruppe).map((l) => {
+                    const erVinner = g?.vinner === l.id;
+                    const erToer = g?.toer === l.id;
+                    const erTreer = g?.treer === l.id;
                     return (
-                      <option key={id} value={id}>
-                        {l.flagg} {l.navn} (gr. {l.gruppe})
-                      </option>
+                      <li key={l.id}>
+                        <button
+                          type="button"
+                          disabled={!kanEndre}
+                          onClick={() => velgIGruppe(gruppe, l.id)}
+                          className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition ${
+                            erVinner || erToer
+                              ? "border-emerald-500 bg-emerald-50 font-medium"
+                              : erTreer
+                                ? "border-[#5239ba] bg-[#5239ba]/10 font-medium"
+                                : "border-zinc-200 hover:border-zinc-300"
+                          } ${kanEndre ? "" : "cursor-default opacity-90"}`}
+                        >
+                          <span className="text-lg">{l.flagg}</span>
+                          <span className="flex-1">{l.navn}</span>
+                          {(erVinner || erToer) && (
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
+                              {erVinner ? 1 : 2}
+                            </span>
+                          )}
+                          {erTreer && (
+                            <span className="flex h-5 items-center justify-center rounded-full bg-[#5239ba] px-2 text-[10px] font-bold text-white">
+                              {treerNr}/{MAKS_TREERE}
+                            </span>
+                          )}
+                        </button>
+                      </li>
                     );
                   })}
-                </select>
-              </label>
+                </ul>
+              </div>
             );
           })}
         </div>
-        {antallGruppe < 12 && (
-          <p className="text-xs text-zinc-400">
-            Tips: fyll ut gruppespillet først – da blir det tydeligere hvilke
-            lag som er kandidater til treer-plassene.
-          </p>
-        )}
       </section>
 
       {/* ── Sluttspill ── */}
       <section className="flex flex-col gap-4">
         <Seksjonstittel
-          tittel="3 · Sluttspill"
+          tittel="2 · Sluttspill"
           undertittel={`Klikk vinneren i hver kamp · ${antallVinnere}/${sluttspill.length}`}
         />
         {mester && (
@@ -488,7 +437,9 @@ function Lagvalg({
         <>
           <span className="text-base">{lag.flagg}</span>
           <span className="flex-1">{lag.navn}</span>
-          {valgt && <span className="text-emerald-600">✓</span>}
+          {valgt && (
+            <Check className="h-4 w-4 text-emerald-600" strokeWidth={3} />
+          )}
         </>
       ) : (
         <span className="flex-1 text-zinc-400">{beskrivReferanse(referanse)}</span>

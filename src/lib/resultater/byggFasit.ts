@@ -1,7 +1,7 @@
 import "server-only";
 
 import { type Gruppe, grupper, sluttspill } from "@/data/turnering";
-import { type TippData, deltakerePåKamp } from "@/lib/tipp";
+import { type GruppeTipp, type TippData, deltakerePåKamp } from "@/lib/tipp";
 import {
   type ApiGruppetabell,
   type ApiKamp,
@@ -34,22 +34,9 @@ export function byggFasit(
   kamper: ApiKamp[],
 ): ByggResultat {
   const logg: string[] = [];
-  const fasit: TippData = { gruppe: {}, treere: {}, vinnere: {} };
+  const fasit: TippData = { gruppe: {}, vinnere: {} };
 
-  // 1) Gruppespill: 1.- og 2.-plass fra tabellene.
-  for (const tabell of tabeller) {
-    const gruppe = gruppebokstav(tabell.group);
-    if (!gruppe) continue;
-    const sortert = [...tabell.table].sort((a, b) => a.position - b.position);
-    const vinner = finnLagId(sortert[0]?.team.name, sortert[0]?.team.shortName);
-    const toer = finnLagId(sortert[1]?.team.name, sortert[1]?.team.shortName);
-    if (vinner && toer) {
-      fasit.gruppe![gruppe] = { vinner, toer };
-    }
-  }
-  logg.push(`Grupper utledet: ${Object.keys(fasit.gruppe!).length}/12`);
-
-  // 2) Sluttspill: forbered alle knockout-kamper der begge lag er kjent.
+  // Forbered alle knockout-kamper der begge lag er kjent (sortert på dato).
   const knockout: KnockoutKamp[] = kamper
     .filter((k) => k.stage && k.stage.toUpperCase() !== "GROUP_STAGE")
     .map((k) => {
@@ -66,7 +53,30 @@ export function byggFasit(
     .filter((k) => k.homeId && k.awayId)
     .sort((a, b) => a.dato.localeCompare(b.dato));
 
-  // Gå gjennom stigen i rekkefølge og match hver kamp på lag-identitet.
+  // Lag som er med i sluttspillet (brukes til å se hvilke treere gikk videre).
+  const iSluttspill = new Set<string>();
+  for (const k of knockout) {
+    if (k.homeId) iSluttspill.add(k.homeId);
+    if (k.awayId) iSluttspill.add(k.awayId);
+  }
+
+  // 1) Gruppespill: 1.- og 2.-plass, samt treer (3.-plass som gikk videre).
+  for (const tabell of tabeller) {
+    const gruppe = gruppebokstav(tabell.group);
+    if (!gruppe) continue;
+    const sortert = [...tabell.table].sort((a, b) => a.position - b.position);
+    const vinner = finnLagId(sortert[0]?.team.name, sortert[0]?.team.shortName);
+    const toer = finnLagId(sortert[1]?.team.name, sortert[1]?.team.shortName);
+    const treer = finnLagId(sortert[2]?.team.name, sortert[2]?.team.shortName);
+    if (vinner && toer) {
+      const g: GruppeTipp = { vinner, toer };
+      if (treer && iSluttspill.has(treer)) g.treer = treer;
+      fasit.gruppe![gruppe] = g;
+    }
+  }
+
+  // 2) Sluttspill-vinnere. Treer-kamper løses via gruppevinneren (hjemmelaget),
+  // siden treernes eksakte plass-tildeling ikke trengs for å finne vinneren.
   const brukt = new Set<number>();
   for (const kamp of sluttspill) {
     const { hjemme, borte } = deltakerePåKamp(kamp.nummer, fasit);
@@ -78,9 +88,6 @@ export function byggFasit(
       m = knockout.find(
         (k) => !brukt.has(k.id) && (k.homeId === hjemme || k.awayId === hjemme),
       );
-      if (!m) continue;
-      const tredje = m.homeId === hjemme ? m.awayId : m.homeId;
-      if (tredje) fasit.treere![String(kamp.nummer)] = tredje;
     } else {
       if (!hjemme || !borte) continue;
       m = knockout.find(
@@ -89,14 +96,17 @@ export function byggFasit(
           ((k.homeId === hjemme && k.awayId === borte) ||
             (k.homeId === borte && k.awayId === hjemme)),
       );
-      if (!m) continue;
     }
-
+    if (!m) continue;
     brukt.add(m.id);
     if (m.vinnerId) fasit.vinnere![String(kamp.nummer)] = m.vinnerId;
   }
 
-  logg.push(`Treer-plasser utledet: ${Object.keys(fasit.treere!).length}/8`);
+  const antallTreere = Object.values(fasit.gruppe!).filter(
+    (g) => g?.treer,
+  ).length;
+  logg.push(`Grupper utledet: ${Object.keys(fasit.gruppe!).length}/12`);
+  logg.push(`Treere utledet: ${antallTreere}/8`);
   logg.push(
     `Sluttspill-vinnere utledet: ${Object.keys(fasit.vinnere!).length}/${sluttspill.length}`,
   );
