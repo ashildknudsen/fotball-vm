@@ -47,8 +47,8 @@ export default async function Hjemmeside() {
             href="/tipp"
             emoji="👉"
             tittel="Bli med i konkurransen"
-            beskrivelse="Tipp hvem som går videre fra gruppene og hele veien til finalen."
-            knapp="Sett i gang"
+            beskrivelse="Tipp hvem som går videre fra gruppespillet."
+            knapp="Start tipping av gruppespillet"
           />
           <HandlingsKort
             href="/resultater"
@@ -72,7 +72,11 @@ export default async function Hjemmeside() {
           <div>
             <h2 className="font-semibold">Premier!</h2>
             <p className="text-sm text-zinc-500">
-              Premien for høyeste score er en valgfri landslagsdrakt
+              Det blir premie til både gruppespillvinner og sluttspillvinner.
+              Premien for høyeste score totalt er en{" "}
+              <strong className="font-semibold text-zinc-700">
+                valgfri landslagsdrakt
+              </strong>{" "}
               (voksen/barn) fra Unisport. Det blir også trøstepremie til andre-
               og tredjeplass.
             </p>

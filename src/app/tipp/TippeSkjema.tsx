@@ -312,6 +312,20 @@ export default function TippeSkjema({
       </section>
       )}
 
+      {/* ── Sluttspill kommer (gruppespill-fasen) ── */}
+      {!visSluttspill && !erFasit && (
+        <section className="flex flex-col gap-4">
+          <Seksjonstittel
+            tittel="2 · Sluttspill"
+            undertittel="Åpner når gruppespillet er ferdig"
+          />
+          <p className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900">
+            Sluttspillet åpner <strong>27. juni</strong> – da fyller du ut treet
+            med de ekte lagene som gikk videre fra gruppespillet.
+          </p>
+        </section>
+      )}
+
       {/* ── Lagre-linje ── */}
       {kanEndre && (
         <div className="fixed inset-x-0 bottom-0 border-t border-zinc-200 bg-white/95 p-3 backdrop-blur">
