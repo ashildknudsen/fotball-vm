@@ -94,6 +94,7 @@ function Gruppekort({ gruppe, tipp }: { gruppe: Gruppe; tipp: TippData }) {
   const g = tipp.gruppe?.[gruppe];
   const vinner = g?.vinner ? finnLag(g.vinner) : undefined;
   const toer = g?.toer ? finnLag(g.toer) : undefined;
+  const treer = g?.treer ? finnLag(g.treer) : undefined;
   return (
     <div className="rounded-lg border border-zinc-200 p-3">
       <h3 className="mb-1 text-xs font-semibold text-zinc-400">
@@ -108,6 +109,14 @@ function Gruppekort({ gruppe, tipp }: { gruppe: Gruppe; tipp: TippData }) {
           <span className="text-zinc-400">2.</span>
           <span>{toer ? `${toer.flagg} ${toer.navn}` : "—"}</span>
         </li>
+        {treer && (
+          <li className="flex items-center gap-2 text-[#5239ba]">
+            <span>3.</span>
+            <span>
+              {treer.flagg} {treer.navn}
+            </span>
+          </li>
+        )}
       </ol>
     </div>
   );
