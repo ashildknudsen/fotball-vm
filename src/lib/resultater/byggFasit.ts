@@ -34,7 +34,7 @@ export function byggFasit(
   kamper: ApiKamp[],
 ): ByggResultat {
   const logg: string[] = [];
-  const fasit: TippData = { gruppe: {}, vinnere: {} };
+  const fasit: TippData = { gruppe: {}, vinnere: {}, sluttspilloppsett: {} };
 
   // Forbered alle knockout-kamper der begge lag er kjent (sortert på dato).
   const knockout: KnockoutKamp[] = kamper
@@ -100,6 +100,14 @@ export function byggFasit(
     if (!m) continue;
     brukt.add(m.id);
     if (m.vinnerId) fasit.vinnere![String(kamp.nummer)] = m.vinnerId;
+
+    // Lagre den ekte 16-delsfinale-oppstillingen (til seeding av fase 2).
+    if (kamp.runde === "16-delsfinale" && m.homeId && m.awayId) {
+      fasit.sluttspilloppsett![String(kamp.nummer)] = {
+        hjemme: m.homeId,
+        borte: m.awayId,
+      };
+    }
   }
 
   const antallTreere = Object.values(fasit.gruppe!).filter(
@@ -107,6 +115,9 @@ export function byggFasit(
   ).length;
   logg.push(`Grupper utledet: ${Object.keys(fasit.gruppe!).length}/12`);
   logg.push(`Treere utledet: ${antallTreere}/8`);
+  logg.push(
+    `16-delsfinale-oppstilling: ${Object.keys(fasit.sluttspilloppsett!).length}/16`,
+  );
   logg.push(
     `Sluttspill-vinnere utledet: ${Object.keys(fasit.vinnere!).length}/${sluttspill.length}`,
   );

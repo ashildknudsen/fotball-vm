@@ -35,6 +35,10 @@ export async function GET(request: Request) {
     const flettet = sanérTipp({
       gruppe: { ...(eksisterende.gruppe ?? {}), ...(utledet.gruppe ?? {}) },
       vinnere: { ...(eksisterende.vinnere ?? {}), ...(utledet.vinnere ?? {}) },
+      sluttspilloppsett: {
+        ...(eksisterende.sluttspilloppsett ?? {}),
+        ...(utledet.sluttspilloppsett ?? {}),
+      },
     });
 
     const { error } = await admin.from("fasit").upsert({

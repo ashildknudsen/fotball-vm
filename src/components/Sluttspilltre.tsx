@@ -5,7 +5,11 @@ import {
   finnLag,
   sluttspill,
 } from "@/data/turnering";
-import { type TippData, deltakerePåKamp } from "@/lib/tipp";
+import {
+  type TippData,
+  deltakerePåKamp,
+  deltakerePåKampSluttspill,
+} from "@/lib/tipp";
 
 // De ordinære kolonnene. Finale + bronsefinale samles i en egen "Finaler"-kolonne.
 const kolonner: { runde: RundeType; tittel: string }[] = [
@@ -17,8 +21,15 @@ const kolonner: { runde: RundeType; tittel: string }[] = [
 
 type Medaljer = { vinner?: string; taper?: string };
 
-// Tegner et sluttspill-tre ut fra et oppsett. Read-only.
-export default function Sluttspilltre({ tipp }: { tipp: TippData }) {
+// Tegner et sluttspill-tre ut fra et oppsett. Read-only. Hvis `fasit` er gitt
+// (fase 2), seedes 16-delsfinalen med de ekte lagene derfra.
+export default function Sluttspilltre({
+  tipp,
+  fasit,
+}: {
+  tipp: TippData;
+  fasit?: TippData;
+}) {
   const mester = tipp.vinnere?.["104"] ? finnLag(tipp.vinnere["104"]) : undefined;
   const finale = finnKamp(104);
   const bronse = finnKamp(103);
@@ -42,7 +53,12 @@ export default function Sluttspilltre({ tipp }: { tipp: TippData }) {
                 {sluttspill
                   .filter((k) => k.runde === runde)
                   .map((kamp) => (
-                    <Kampkort key={kamp.nummer} kamp={kamp} tipp={tipp} />
+                    <Kampkort
+                      key={kamp.nummer}
+                      kamp={kamp}
+                      tipp={tipp}
+                      fasit={fasit}
+                    />
                   ))}
               </div>
             </div>
@@ -58,11 +74,17 @@ export default function Sluttspilltre({ tipp }: { tipp: TippData }) {
                 <Kampkort
                   kamp={finale}
                   tipp={tipp}
+                  fasit={fasit}
                   medaljer={{ vinner: "🥇", taper: "🥈" }}
                 />
               )}
               {bronse && (
-                <Kampkort kamp={bronse} tipp={tipp} medaljer={{ vinner: "🥉" }} />
+                <Kampkort
+                  kamp={bronse}
+                  tipp={tipp}
+                  fasit={fasit}
+                  medaljer={{ vinner: "🥉" }}
+                />
               )}
             </div>
           </div>
@@ -75,13 +97,17 @@ export default function Sluttspilltre({ tipp }: { tipp: TippData }) {
 function Kampkort({
   kamp,
   tipp,
+  fasit,
   medaljer,
 }: {
   kamp: Sluttspillkamp;
   tipp: TippData;
+  fasit?: TippData;
   medaljer?: Medaljer;
 }) {
-  const { hjemme, borte } = deltakerePåKamp(kamp.nummer, tipp);
+  const { hjemme, borte } = fasit
+    ? deltakerePåKampSluttspill(kamp.nummer, tipp, fasit)
+    : deltakerePåKamp(kamp.nummer, tipp);
   const vinner = tipp.vinnere?.[String(kamp.nummer)] ?? null;
 
   const medalje = (lagId: string | null, vant: boolean): string | undefined => {

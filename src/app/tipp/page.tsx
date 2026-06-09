@@ -2,8 +2,11 @@ import Link from "next/link";
 import { Check, PencilLine } from "lucide-react";
 import { hentEllerOpprettProfil } from "@/lib/profil";
 import { lagServerKlient } from "@/lib/supabase/server";
-import { type TippData, tippingErLåst } from "@/lib/tipp";
+import { lagAdminKlient } from "@/lib/supabase/admin";
+import { type TippData, tippingErLåst, sluttspillErLåst } from "@/lib/tipp";
+import { FASE } from "@/lib/fase";
 import TippeSkjema from "./TippeSkjema";
+import SluttspillSkjema from "./SluttspillSkjema";
 import { lagreTipp } from "./handlinger";
 
 export default async function TippSide() {
@@ -22,7 +25,23 @@ export default async function TippSide() {
   const eksisterende: TippData = (rad?.data as TippData) ?? {};
   const erLevert = rad?.levert ?? false;
   const harTipp = Boolean(rad);
-  const låst = tippingErLåst();
+  const erSluttspill = FASE === "sluttspill";
+  const låst = erSluttspill ? sluttspillErLåst() : tippingErLåst();
+
+  // I sluttspill-fasen trenger vi fasiten (ekte oppstilling) til å seede treet.
+  let fasit: TippData = {};
+  if (erSluttspill) {
+    const { data: fasitRad } = await lagAdminKlient()
+      .from("fasit")
+      .select("data")
+      .eq("id", 1)
+      .maybeSingle();
+    fasit = (fasitRad?.data as TippData) ?? {};
+  }
+
+  const tittel = erSluttspill
+    ? "Tipp sluttspillet"
+    : "Velg hvilke lag du tror vil vinne";
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-8">
@@ -45,26 +64,36 @@ export default async function TippSide() {
         )}
       </div>
 
-      <h1 className="text-2xl font-bold">Velg hvilke lag du tror vil vinne</h1>
+      <h1 className="text-2xl font-bold">{tittel}</h1>
 
       {låst ? (
         <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Tippefristen har gått ut – du kan se tipset ditt, men ikke endre det.
+          Fristen har gått ut – du kan se tipset ditt, men ikke endre det.
         </p>
       ) : (
         <p className="text-sm text-zinc-500">
-          Velg hvem som går videre fra hver gruppe, fyll inn de åtte beste
-          treerne, og tipp deg helt fram til finalen. Du kan lagre underveis og
-          endre fram til mesterskapet starter.
+          {erSluttspill
+            ? "Tipp vinneren av hver sluttspillkamp – fra de ekte 16-delsfinale-lagene og helt til finalen. Lag som ikke er avklart ennå står som «Ubestemt»."
+            : "Velg hvem som går videre fra hver gruppe og marker de åtte beste treerne. Du kan lagre underveis og endre fram til fristen."}
         </p>
       )}
 
-      <TippeSkjema
-        startTipp={eksisterende}
-        erLevert={erLevert}
-        låst={låst}
-        påLagre={lagreTipp}
-      />
+      {erSluttspill ? (
+        <SluttspillSkjema
+          startTipp={eksisterende}
+          fasit={fasit}
+          erLevert={erLevert}
+          låst={låst}
+          påLagre={lagreTipp}
+        />
+      ) : (
+        <TippeSkjema
+          startTipp={eksisterende}
+          erLevert={erLevert}
+          låst={låst}
+          påLagre={lagreTipp}
+        />
+      )}
     </main>
   );
 }

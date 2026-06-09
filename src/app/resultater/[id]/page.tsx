@@ -81,7 +81,7 @@ export default async function DeltakerSide({
           {FASE === "sluttspill" && (
             <section className="flex flex-col gap-3">
               <h2 className="text-lg font-bold">Sluttspill</h2>
-              <Sluttspilltre tipp={tipp} />
+              <Sluttspilltre tipp={tipp} fasit={fasit} />
             </section>
           )}
         </>

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { lagServerKlient } from "@/lib/supabase/server";
-import { type TippData, tippingErLåst } from "@/lib/tipp";
+import { type TippData, tippingErLåst, sluttspillErLåst } from "@/lib/tipp";
+import { FASE } from "@/lib/fase";
 
 export type LagreResultat = { ok: boolean; melding: string };
 
@@ -11,8 +12,10 @@ export async function lagreTipp(
   data: TippData,
   levert: boolean,
 ): Promise<LagreResultat> {
-  if (tippingErLåst()) {
-    return { ok: false, melding: "Tippefristen har gått ut – tipsene er låst." };
+  const låst =
+    FASE === "sluttspill" ? sluttspillErLåst() : tippingErLåst();
+  if (låst) {
+    return { ok: false, melding: "Fristen har gått ut – tipsene er låst." };
   }
 
   const supabase = await lagServerKlient();

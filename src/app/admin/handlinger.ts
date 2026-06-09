@@ -24,9 +24,23 @@ export async function lagreFasit(
   }
 
   const admin = lagAdminKlient();
+
+  // Bevar den ekte 16-delsfinale-oppstillingen (settes av auto-hentingen),
+  // siden admin-skjemaet ikke sender den med.
+  const { data: rad } = await admin
+    .from("fasit")
+    .select("data")
+    .eq("id", 1)
+    .maybeSingle();
+  const eksisterende = (rad?.data as TippData) ?? {};
+  const lagret: TippData = {
+    ...data,
+    sluttspilloppsett: data.sluttspilloppsett ?? eksisterende.sluttspilloppsett,
+  };
+
   const { error } = await admin.from("fasit").upsert({
     id: 1,
-    data,
+    data: lagret,
     oppdatert: new Date().toISOString(),
   });
 

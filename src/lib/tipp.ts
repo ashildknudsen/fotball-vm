@@ -25,6 +25,9 @@ export type TippData = {
   treerrekkefolge?: Gruppe[];
   // Tippet vinner av hver sluttspillkamp. Nøkkel = kampnummer.
   vinnere?: Record<string, string>;
+  // Kun på fasit: den ekte 16-delsfinale-oppstillingen (kampnr -> lagene),
+  // som sluttspill-tippingen (fase 2) seedes fra. Fylles av auto-henting/admin.
+  sluttspilloppsett?: Record<string, { hjemme: string; borte: string }>;
 };
 
 // Gruppene med treer, i prioritert rekkefølge (1. = best). Bruker lagret
@@ -102,6 +105,50 @@ export function deltakerePåKamp(
   return { hjemme: løs(kamp.hjemme), borte: løs(kamp.borte) };
 }
 
+// Fase 2: deltakerne på en sluttspillkamp når 16-delsfinalen seedes med EKTE
+// lag (fra fasit), og brukeren tipper seg oppover treet med egne valg.
+// R16+ løses fra brukerens vinnere; 16-delsfinalen fra fasitens oppstilling.
+export function deltakerePåKampSluttspill(
+  kampnummer: number,
+  brukerTipp: TippData,
+  fasit: TippData,
+): { hjemme: string | null; borte: string | null } {
+  const kamp = finnKamp(kampnummer);
+  if (!kamp) return { hjemme: null, borte: null };
+
+  // 16-delsfinalen: bruk den ekte oppstillingen der den finnes.
+  const oppsett = fasit.sluttspilloppsett?.[String(kampnummer)];
+  if (oppsett) {
+    return { hjemme: oppsett.hjemme ?? null, borte: oppsett.borte ?? null };
+  }
+
+  const tildeling = treerTildeling(fasit);
+  const løs = (ref: Plassreferanse): string | null => {
+    switch (ref.type) {
+      case "gruppe":
+        return løsReferanse(ref, fasit); // ekte gruppe-resultat
+      case "treer":
+        return tildeling[String(kampnummer)] ?? null;
+      case "vinner":
+        return brukerTipp.vinnere?.[String(ref.kamp)] ?? null;
+      case "taper": {
+        const { hjemme, borte } = deltakerePåKampSluttspill(
+          ref.kamp,
+          brukerTipp,
+          fasit,
+        );
+        const v = brukerTipp.vinnere?.[String(ref.kamp)] ?? null;
+        if (!v) return null;
+        if (hjemme && v !== hjemme) return hjemme;
+        if (borte && v !== borte) return borte;
+        return null;
+      }
+    }
+  };
+
+  return { hjemme: løs(kamp.hjemme), borte: løs(kamp.borte) };
+}
+
 // Rydder vekk ugyldige valg: treere som ikke hører til gruppa eller alt er
 // 1./2., treere ut over maksgrensen, og kampvinnere som ikke lenger er en
 // av deltakerne i kampen.
@@ -112,6 +159,7 @@ export function sanérTipp(input: TippData): TippData {
     ),
     treerrekkefolge: input.treerrekkefolge ? [...input.treerrekkefolge] : undefined,
     vinnere: { ...(input.vinnere ?? {}) },
+    sluttspilloppsett: input.sluttspilloppsett,
   };
 
   let antallTreere = 0;
@@ -142,6 +190,32 @@ export function sanérTipp(input: TippData): TippData {
     }
   }
 
+  return tipp;
+}
+
+// Fase 2: rydder vekk kampvinnere som ikke lenger er deltakere i kampen, der
+// treet seedes fra fasit (ekte lag). Lar gruppe-tipsene være urørt.
+export function sanérSluttspill(
+  brukerTipp: TippData,
+  fasit: TippData,
+): TippData {
+  const tipp: TippData = {
+    ...brukerTipp,
+    vinnere: { ...(brukerTipp.vinnere ?? {}) },
+  };
+  for (const kamp of sluttspill) {
+    const nøkkel = String(kamp.nummer);
+    const vinner = tipp.vinnere![nøkkel];
+    if (!vinner) continue;
+    const { hjemme, borte } = deltakerePåKampSluttspill(
+      kamp.nummer,
+      tipp,
+      fasit,
+    );
+    if (vinner !== hjemme && vinner !== borte) {
+      delete tipp.vinnere![nøkkel];
+    }
+  }
   return tipp;
 }
 
@@ -178,14 +252,13 @@ export function beregnPoeng(tipp: TippData, fasit: TippData): number {
     }
   }
 
-  // Bonus: per lag man har riktig i finalen.
-  const fasitFinale = deltakerePåKamp(104, fasit);
+  // Bonus: per lag man har riktig i finalen. Finalistene er vinnerne av de to
+  // semifinalene (kamp 101 og 102).
   const fasitFinalister = new Set(
-    [fasitFinale.hjemme, fasitFinale.borte].filter(Boolean) as string[],
+    [fasit.vinnere?.["101"], fasit.vinnere?.["102"]].filter(Boolean) as string[],
   );
   if (fasitFinalister.size > 0) {
-    const tippFinale = deltakerePåKamp(104, tipp);
-    for (const lag of [tippFinale.hjemme, tippFinale.borte]) {
+    for (const lag of [tipp.vinnere?.["101"], tipp.vinnere?.["102"]]) {
       if (lag && fasitFinalister.has(lag)) poeng += finalistBonus;
     }
   }
@@ -201,6 +274,23 @@ export function tippefrist(): Date {
 // Er tippefristen passert?
 export function tippingErLåst(): boolean {
   return new Date() >= tippefrist();
+}
+
+// Sluttspill-fristen (fase 2). Default: 16-delsfinalen starter 28.06 kl. 21.
+export function sluttspillfrist(): Date {
+  return new Date(process.env.SLUTTSPILLFRIST ?? "2026-06-28T19:00:00Z");
+}
+
+export function sluttspillErLåst(): boolean {
+  return new Date() >= sluttspillfrist();
+}
+
+export function sluttspillfristTekst(): string {
+  return new Intl.DateTimeFormat("nb-NO", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "Europe/Oslo",
+  }).format(sluttspillfrist());
 }
 
 // Tippefristen som lesbar norsk tekst, f.eks. "11. juni 2026 kl. 21:00".
