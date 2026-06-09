@@ -20,13 +20,22 @@ export type GruppeTipp = { vinner?: string; toer?: string; treer?: string };
 
 export type TippData = {
   gruppe?: Partial<Record<Gruppe, GruppeTipp>>;
+  // Rekkefølgen treerne ble prioritert i (1. = best). Styrer nummereringen
+  // og hvilken sluttspill-plass hver treer havner på.
+  treerrekkefolge?: Gruppe[];
   // Tippet vinner av hver sluttspillkamp. Nøkkel = kampnummer.
   vinnere?: Record<string, string>;
 };
 
-// Gruppene (i rekkefølge) der det er markert en treer.
+// Gruppene med treer, i prioritert rekkefølge (1. = best). Bruker lagret
+// rekkefølge der den finnes, og legger evt. nye bakerst.
 export function treerGrupper(tipp: TippData): Gruppe[] {
-  return grupper.filter((g) => tipp.gruppe?.[g]?.treer);
+  const medTreer = grupper.filter((g) => tipp.gruppe?.[g]?.treer);
+  const rekkefolge = (tipp.treerrekkefolge ?? []).filter((g) =>
+    medTreer.includes(g),
+  );
+  const resten = medTreer.filter((g) => !rekkefolge.includes(g));
+  return [...rekkefolge, ...resten];
 }
 
 // Alle treer-plasser i sluttspillet (kamper der borte-laget er en treer),
@@ -101,6 +110,7 @@ export function sanérTipp(input: TippData): TippData {
     gruppe: Object.fromEntries(
       Object.entries(input.gruppe ?? {}).map(([g, v]) => [g, { ...v }]),
     ),
+    treerrekkefolge: input.treerrekkefolge ? [...input.treerrekkefolge] : undefined,
     vinnere: { ...(input.vinnere ?? {}) },
   };
 
@@ -116,6 +126,9 @@ export function sanérTipp(input: TippData): TippData {
       antallTreere++;
     }
   }
+
+  // Oppdater prioritert treer-rekkefølge (behold rekkefølge, dropp ugyldige).
+  tipp.treerrekkefolge = treerGrupper(tipp);
 
   // Vinnere behandles i kampnummer-rekkefølge slik at de er ryddet før de
   // brukes til å løse ut senere kamper.

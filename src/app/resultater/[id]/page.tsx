@@ -6,6 +6,7 @@ import { lagAdminKlient } from "@/lib/supabase/admin";
 import { type TippData, beregnPoeng } from "@/lib/tipp";
 import { type Gruppe, grupper, finnLag } from "@/data/turnering";
 import Sluttspilltre from "@/components/Sluttspilltre";
+import { FASE } from "@/lib/fase";
 
 export default async function DeltakerSide({
   params,
@@ -77,10 +78,12 @@ export default async function DeltakerSide({
             </div>
           </section>
 
-          <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-bold">Sluttspill</h2>
-            <Sluttspilltre tipp={tipp} />
-          </section>
+          {FASE === "sluttspill" && (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-lg font-bold">Sluttspill</h2>
+              <Sluttspilltre tipp={tipp} />
+            </section>
+          )}
         </>
       )}
     </main>

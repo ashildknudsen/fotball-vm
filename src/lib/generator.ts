@@ -37,13 +37,15 @@ function generer(nøkkel: (lagId: string) => number): TippData {
     treerKandidater.push({ gruppe, lagId: sortert[2].id, k: nøkkel(sortert[2].id) });
   }
 
-  // De 8 «beste» treerne (etter nøkkel) markeres som treere.
-  treerKandidater
+  // De 8 «beste» treerne (etter nøkkel) markeres som treere, i prioritert
+  // rekkefølge (best først).
+  const valgteTreere = treerKandidater
     .sort((a, b) => b.k - a.k)
-    .slice(0, MAKS_TREERE)
-    .forEach((k) => {
-      tipp.gruppe![k.gruppe]!.treer = k.lagId;
-    });
+    .slice(0, MAKS_TREERE);
+  valgteTreere.forEach((k) => {
+    tipp.gruppe![k.gruppe]!.treer = k.lagId;
+  });
+  tipp.treerrekkefolge = valgteTreere.map((k) => k.gruppe);
 
   // Sluttspill: velg vinner i hver kamp (i rekkefølge, så senere kamper løses).
   for (const kamp of sluttspill) {

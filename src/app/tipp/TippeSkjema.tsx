@@ -20,8 +20,11 @@ import {
   treerGrupper,
 } from "@/lib/tipp";
 import { genererTilfeldig, genererFraRanking } from "@/lib/generator";
+import { FASE } from "@/lib/fase";
 
 export type LagreResultat = { ok: boolean; melding: string };
+
+const visSluttspill = FASE === "sluttspill";
 
 const rundeRekkefølge: RundeType[] = [
   "16-delsfinale",
@@ -74,7 +77,9 @@ export default function TippeSkjema({
 
   function settHeleTipp(ny: TippData, beskjed: string) {
     if (!kanEndre) return;
-    setTipp(sanérTipp(ny));
+    // I gruppespill-fasen tipper vi ikke sluttspill ennå.
+    const data = visSluttspill ? ny : { ...ny, vinnere: {} };
+    setTipp(sanérTipp(data));
     setMelding(beskjed);
   }
 
@@ -216,12 +221,15 @@ export default function TippeSkjema({
           tittel="1 · Gruppespill"
           undertittel={`Velg 1.- og 2.-plass, og marker treere (${antallTreere}/${MAKS_TREERE}) · ${antallGruppe}/12 grupper`}
         />
+        {!erFasit && (
+          <p className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900">
+            Marker også de 8 treerne du tror går videre. Selve sluttspillet
+            tipper du etter at gruppespillet er ferdig – da med de ekte lagene.
+          </p>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           {grupper.map((gruppe) => {
             const g = tipp.gruppe?.[gruppe];
-            const treerNr = g?.treer
-              ? treerGrupper(tipp).indexOf(gruppe) + 1
-              : 0;
             return (
               <div key={gruppe} className="rounded-xl border border-zinc-200 p-3">
                 <h3 className="mb-2 text-sm font-semibold text-zinc-500">
@@ -254,8 +262,8 @@ export default function TippeSkjema({
                             </span>
                           )}
                           {erTreer && (
-                            <span className="flex h-5 items-center justify-center rounded-full bg-[#5239ba] px-2 text-[10px] font-bold text-white">
-                              {treerNr}/{MAKS_TREERE}
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#5239ba] text-white">
+                              <Check className="h-3 w-3" strokeWidth={3} />
                             </span>
                           )}
                         </button>
@@ -269,7 +277,8 @@ export default function TippeSkjema({
         </div>
       </section>
 
-      {/* ── Sluttspill ── */}
+      {/* ── Sluttspill (kun i sluttspill-fasen) ── */}
+      {visSluttspill && (
       <section className="flex flex-col gap-4">
         <Seksjonstittel
           tittel="2 · Sluttspill"
@@ -301,6 +310,7 @@ export default function TippeSkjema({
           </div>
         ))}
       </section>
+      )}
 
       {/* ── Lagre-linje ── */}
       {kanEndre && (
