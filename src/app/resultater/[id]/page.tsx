@@ -3,7 +3,14 @@ import { Check, PencilLine } from "lucide-react";
 import { notFound } from "next/navigation";
 import { hentEllerOpprettProfil } from "@/lib/profil";
 import { lagAdminKlient } from "@/lib/supabase/admin";
-import { type TippData, beregnPoeng } from "@/lib/tipp";
+import {
+  type TippData,
+  beregnPoeng,
+  tippingErLåst,
+  sluttspillErLåst,
+  tippefristTekst,
+  sluttspillfristTekst,
+} from "@/lib/tipp";
 import { type Gruppe, grupper, finnLag } from "@/data/turnering";
 import Sluttspilltre from "@/components/Sluttspilltre";
 import { FASE } from "@/lib/fase";
@@ -14,7 +21,7 @@ export default async function DeltakerSide({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await hentEllerOpprettProfil();
+  const meg = await hentEllerOpprettProfil();
   const db = lagAdminKlient();
 
   const [{ data: profil }, { data: tippRad }, { data: fasitRad }] =
@@ -31,6 +38,11 @@ export default async function DeltakerSide({
   const poeng = beregnPoeng(tipp, fasit);
   const harTippet = Boolean(tippRad);
   const erLevert = tippRad?.levert ?? false;
+
+  // Andres tips er skjult til fristen har gått ut. Ditt eget ser du alltid.
+  const erMeg = id === meg.id;
+  const gruppeSynlig = erMeg || tippingErLåst();
+  const sluttspillSynlig = erMeg || sluttspillErLåst();
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-8">
@@ -63,7 +75,12 @@ export default async function DeltakerSide({
         </span>
       </header>
 
-      {!harTippet ? (
+      {!gruppeSynlig ? (
+        <p className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          Du kan ikke se andres tips før tippefristen har gått ut (
+          {tippefristTekst()}). Ditt eget kan du alltid se.
+        </p>
+      ) : !harTippet ? (
         <p className="rounded-lg bg-zinc-50 px-4 py-3 text-zinc-500">
           Denne deltakeren har ikke levert noe tips ennå.
         </p>
@@ -78,12 +95,18 @@ export default async function DeltakerSide({
             </div>
           </section>
 
-          {FASE === "sluttspill" && (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-lg font-bold">Sluttspill</h2>
-              <Sluttspilltre tipp={tipp} fasit={fasit} />
-            </section>
-          )}
+          {FASE === "sluttspill" &&
+            (sluttspillSynlig ? (
+              <section className="flex flex-col gap-3">
+                <h2 className="text-lg font-bold">Sluttspill</h2>
+                <Sluttspilltre tipp={tipp} fasit={fasit} />
+              </section>
+            ) : (
+              <p className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                Sluttspill-tipset blir synlig når sluttspillfristen har gått ut (
+                {sluttspillfristTekst()}).
+              </p>
+            ))}
         </>
       )}
     </main>

@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { PencilLine } from "lucide-react";
+import { Lock, PencilLine } from "lucide-react";
 import { hentEllerOpprettProfil } from "@/lib/profil";
 import { lagAdminKlient } from "@/lib/supabase/admin";
-import { type TippData, beregnPoeng } from "@/lib/tipp";
+import { type TippData, beregnPoeng, tippingErLåst } from "@/lib/tipp";
 
 type Rad = {
   id: string;
@@ -38,6 +38,9 @@ export default async function ResultatSide() {
     }))
     .sort((a, b) => b.poeng - a.poeng || a.navn.localeCompare(b.navn));
 
+  // Andres oppsett kan først åpnes når tippefristen har gått ut.
+  const kanSeAndres = tippingErLåst();
+
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-4 sm:p-8">
       <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-800">
@@ -69,14 +72,13 @@ export default async function ResultatSide() {
         <p className="text-zinc-500">Ingen har levert tips ennå.</p>
       ) : (
         <ol className="flex flex-col gap-1">
-          {rader.map((r, i) => (
-            <li key={r.id}>
-              <Link
-                href={`/resultater/${r.id}`}
-                className={`flex items-center gap-3 rounded-lg px-4 py-3 transition ${radKlasse(
-                  i,
-                )} ${r.erMeg ? "ring-1 ring-[#5239ba]/70" : ""}`}
-              >
+          {rader.map((r, i) => {
+            const åpen = r.erMeg || kanSeAndres;
+            const klasse = `flex items-center gap-3 rounded-lg px-4 py-3 ${radKlasse(
+              i,
+            )} ${r.erMeg ? "ring-1 ring-[#5239ba]/70" : ""}`;
+            const innhold = (
+              <>
                 <span className="w-6 text-center text-sm font-bold text-zinc-400">
                   {plassering(i)}
                 </span>
@@ -95,10 +97,28 @@ export default async function ResultatSide() {
                     p
                   </span>
                 </span>
-                <span className="text-zinc-300">›</span>
-              </Link>
-            </li>
-          ))}
+                {åpen ? (
+                  <span className="text-zinc-300">›</span>
+                ) : (
+                  <Lock className="h-4 w-4 text-zinc-300" />
+                )}
+              </>
+            );
+            return (
+              <li key={r.id}>
+                {åpen ? (
+                  <Link
+                    href={`/resultater/${r.id}`}
+                    className={`${klasse} transition hover:brightness-95`}
+                  >
+                    {innhold}
+                  </Link>
+                ) : (
+                  <div className={`${klasse} cursor-default`}>{innhold}</div>
+                )}
+              </li>
+            );
+          })}
         </ol>
       )}
     </main>
@@ -115,6 +135,5 @@ function plassering(indeks: number): string {
 // Bakgrunnsfarge per plassering: topp tre lyst lilla, resten grå.
 // Mørkere på hover.
 function radKlasse(indeks: number): string {
-  if (indeks <= 2) return "bg-[#5239ba]/5 hover:bg-[#5239ba]/15";
-  return "bg-zinc-50";
+  return indeks <= 2 ? "bg-[#5239ba]/5" : "bg-zinc-50";
 }
