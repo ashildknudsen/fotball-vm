@@ -90,11 +90,11 @@ export default function TippeSkjema({
     });
   }
 
-  // Stort easter egg: norske flagg skytes opp fra bunnen når man sender inn
-  // med Norge som verdensmester. 🇳🇴🏆
-  async function feirNorgeVerdensmester() {
+  // Stort easter egg: når man sender inn, skytes flagget til den tippede
+  // verdensmesteren opp fra bunnen av siden. 🏆
+  async function feirVerdensmester(flaggEmoji: string) {
     const konfetti = (await import("canvas-confetti")).default;
-    const flagg = konfetti.shapeFromText({ text: "🇳🇴", scalar: 3 });
+    const flagg = konfetti.shapeFromText({ text: flaggEmoji, scalar: 3 });
     const skyt = (x: number) =>
       konfetti({
         particleCount: 18,
@@ -146,9 +146,8 @@ export default function TippeSkjema({
       setMelding(res.melding);
       if (res.ok) {
         setLevert(somLevert);
-        if (somLevert && tipp.vinnere?.["104"] === "norge") {
-          feirNorgeVerdensmester();
-        }
+        const mester = somLevert ? finnLag(tipp.vinnere?.["104"] ?? "") : undefined;
+        if (mester) feirVerdensmester(mester.flagg);
       }
     });
   }
