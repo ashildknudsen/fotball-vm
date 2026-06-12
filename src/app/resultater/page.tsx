@@ -3,6 +3,7 @@ import { Lock, PencilLine } from "lucide-react";
 import { hentEllerOpprettProfil } from "@/lib/profil";
 import { lagAdminKlient } from "@/lib/supabase/admin";
 import { type TippData, beregnPoeng, tippingErLåst } from "@/lib/tipp";
+import { type Gruppe, grupper, finnLag } from "@/data/turnering";
 
 type Rad = {
   id: string;
@@ -41,12 +42,28 @@ export default async function ResultatSide() {
   // Andres oppsett kan først åpnes når tippefristen har gått ut.
   const kanSeAndres = tippingErLåst();
 
+  // Gruppestilling + foreløpig/endelig.
+  const tabeller = fasit.tabeller ?? {};
+  const harStilling = Object.keys(tabeller).length > 0;
+  const gruppespillFerdig =
+    harStilling &&
+    Object.values(tabeller).every((rader) =>
+      (rader ?? []).every((r) => r.spilt >= 3),
+    );
+
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-4 sm:p-8">
       <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-800">
         ← Tilbake
       </Link>
       <h1 className="text-2xl font-bold">🏆 Resultattavle</h1>
+
+      {harStilling && !gruppespillFerdig && (
+        <p className="rounded-lg bg-[#5239ba]/10 px-4 py-3 text-sm text-[#5239ba]">
+          ⏱️ <strong>Foreløpige poeng</strong> – de regnes ut fra stillingen akkurat
+          nå og endrer seg når flere gruppekamper spilles. Oppdateres hver morgen.
+        </p>
+      )}
 
       <div className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900">
         <p className="font-semibold">Slik får du poeng</p>
@@ -121,7 +138,75 @@ export default async function ResultatSide() {
           })}
         </ol>
       )}
+
+      {harStilling && (
+        <section className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-lg font-bold">Stilling i gruppene</h2>
+            <p className="text-sm text-zinc-500">
+              {gruppespillFerdig
+                ? "Gruppespillet er ferdig. Videre (grønt) og beste treere (lilla)."
+                : "Slik ligger gruppene an akkurat nå. Grønt = videre, lilla = beste treer (foreløpig)."}
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {grupper.map((g) => (
+              <Gruppetabell
+                key={g}
+                gruppe={g}
+                rader={tabeller[g] ?? []}
+                videre={fasit.gruppe?.[g]}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
+  );
+}
+
+function Gruppetabell({
+  gruppe,
+  rader,
+  videre,
+}: {
+  gruppe: Gruppe;
+  rader: { lag: string; poeng: number; mf: number; spilt: number }[];
+  videre?: { vinner?: string; toer?: string; treer?: string };
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-200 p-3">
+      <h3 className="mb-2 text-sm font-semibold text-zinc-500">Gruppe {gruppe}</h3>
+      <ul className="flex flex-col gap-1">
+        {rader.map((r, i) => {
+          const lag = finnLag(r.lag);
+          const erVidere = r.lag === videre?.vinner || r.lag === videre?.toer;
+          const erTreer = r.lag === videre?.treer;
+          return (
+            <li
+              key={r.lag}
+              className={`flex items-center gap-2 rounded px-2 py-1 text-sm ${
+                erVidere
+                  ? "bg-emerald-50"
+                  : erTreer
+                    ? "bg-[#5239ba]/10"
+                    : ""
+              }`}
+            >
+              <span className="w-4 text-center text-xs text-zinc-400">
+                {i + 1}
+              </span>
+              <span>{lag?.flagg ?? "🏳️"}</span>
+              <span className="flex-1 truncate">{lag?.navn ?? r.lag}</span>
+              <span className="text-xs text-zinc-400">{r.spilt} sp</span>
+              <span className="w-6 text-right font-semibold tabular-nums">
+                {r.poeng}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

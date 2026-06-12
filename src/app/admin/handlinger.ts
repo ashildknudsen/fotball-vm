@@ -36,6 +36,7 @@ export async function lagreFasit(
   const lagret: TippData = {
     ...data,
     sluttspilloppsett: data.sluttspilloppsett ?? eksisterende.sluttspilloppsett,
+    tabeller: data.tabeller ?? eksisterende.tabeller,
   };
 
   const { error } = await admin.from("fasit").upsert({

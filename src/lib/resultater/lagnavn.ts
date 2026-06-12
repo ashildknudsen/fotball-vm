@@ -1,6 +1,6 @@
 import { lag } from "@/data/turnering";
 
-// Kobler lagnavn fra openfootball (engelske navn) til våre lag-IDer.
+// Kobler lagnavn fra football-data.org (engelske navn) til våre lag-IDer.
 // Vi normaliserer bort store/små bokstaver, aksenter og spesialtegn, og
 // matcher mot en liste aliaser + det norske navnet vårt.
 

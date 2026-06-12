@@ -1,7 +1,7 @@
 import "server-only";
 
-import { type Gruppe, grupper, sluttspill } from "@/data/turnering";
-import { type GruppeTipp, type TippData, deltakerePåKamp } from "@/lib/tipp";
+import { type Gruppe, grupper, lagIGruppe, sluttspill } from "@/data/turnering";
+import { type TippData, deltakerePåKamp } from "@/lib/tipp";
 import {
   type ApiGruppetabell,
   type ApiKamp,
@@ -34,7 +34,12 @@ export function byggFasit(
   kamper: ApiKamp[],
 ): ByggResultat {
   const logg: string[] = [];
-  const fasit: TippData = { gruppe: {}, vinnere: {}, sluttspilloppsett: {} };
+  const fasit: TippData = {
+    gruppe: {},
+    vinnere: {},
+    sluttspilloppsett: {},
+    tabeller: {},
+  };
 
   // Forbered alle knockout-kamper der begge lag er kjent (sortert på dato).
   const knockout: KnockoutKamp[] = kamper
@@ -53,27 +58,66 @@ export function byggFasit(
     .filter((k) => k.homeId && k.awayId)
     .sort((a, b) => a.dato.localeCompare(b.dato));
 
-  // Lag som er med i sluttspillet (brukes til å se hvilke treere gikk videre).
-  const iSluttspill = new Set<string>();
-  for (const k of knockout) {
-    if (k.homeId) iSluttspill.add(k.homeId);
-    if (k.awayId) iSluttspill.add(k.awayId);
-  }
+  // 1) Gruppespill: full tabell per gruppe (alle 4 lag), 1.- og 2.-plass, og
+  // de 8 beste treerne ut fra LØPENDE stilling (foreløpig under gruppespillet).
+  type TreerKandidat = {
+    gruppe: Gruppe;
+    lag: string;
+    poeng: number;
+    mf: number;
+    scoret: number;
+  };
+  const treerKandidater: TreerKandidat[] = [];
 
-  // 1) Gruppespill: 1.- og 2.-plass, samt treer (3.-plass som gikk videre).
-  for (const tabell of tabeller) {
-    const gruppe = gruppebokstav(tabell.group);
-    if (!gruppe) continue;
-    const sortert = [...tabell.table].sort((a, b) => a.position - b.position);
-    const vinner = finnLagId(sortert[0]?.team.name, sortert[0]?.team.shortName);
-    const toer = finnLagId(sortert[1]?.team.name, sortert[1]?.team.shortName);
-    const treer = finnLagId(sortert[2]?.team.name, sortert[2]?.team.shortName);
-    if (vinner && toer) {
-      const g: GruppeTipp = { vinner, toer };
-      if (treer && iSluttspill.has(treer)) g.treer = treer;
-      fasit.gruppe![gruppe] = g;
+  for (const gruppe of grupper) {
+    const tabell = tabeller.find((t) => gruppebokstav(t.group) === gruppe);
+    // Statistikk per lag fra football-data.org (kun lag som har spilt finnes der).
+    const stats = new Map<
+      string,
+      { poeng: number; mf: number; scoret: number; spilt: number }
+    >();
+    for (const r of tabell?.table ?? []) {
+      const id = finnLagId(r.team.name, r.team.shortName);
+      if (id) stats.set(id, { poeng: r.poeng, mf: r.mf, scoret: r.scoret, spilt: r.spilt });
+    }
+
+    // Alle 4 lag i gruppa, med stats (0 hvis ikke spilt), sortert.
+    const rader = lagIGruppe(gruppe)
+      .map((l) => ({
+        lag: l.id,
+        ...(stats.get(l.id) ?? { poeng: 0, mf: 0, scoret: 0, spilt: 0 }),
+      }))
+      .sort((a, b) => b.poeng - a.poeng || b.mf - a.mf || b.scoret - a.scoret);
+
+    fasit.tabeller![gruppe] = rader.map((r) => ({
+      lag: r.lag,
+      poeng: r.poeng,
+      mf: r.mf,
+      spilt: r.spilt,
+    }));
+
+    // Sett 1./2.-plass kun når gruppa har startet (minst én kamp spilt).
+    const harSpilt = rader.some((r) => r.spilt > 0);
+    if (harSpilt) {
+      fasit.gruppe![gruppe] = { vinner: rader[0].lag, toer: rader[1].lag };
+      treerKandidater.push({
+        gruppe,
+        lag: rader[2].lag,
+        poeng: rader[2].poeng,
+        mf: rader[2].mf,
+        scoret: rader[2].scoret,
+      });
     }
   }
+
+  // De 8 beste treerne (rangert på tvers av gruppene) markeres som videre.
+  treerKandidater
+    .sort((a, b) => b.poeng - a.poeng || b.mf - a.mf || b.scoret - a.scoret)
+    .slice(0, 8)
+    .forEach((k) => {
+      const g = fasit.gruppe![k.gruppe];
+      if (g) g.treer = k.lag;
+    });
 
   // 2) Sluttspill-vinnere. Treer-kamper løses via gruppevinneren (hjemmelaget),
   // siden treernes eksakte plass-tildeling ikke trengs for å finne vinneren.

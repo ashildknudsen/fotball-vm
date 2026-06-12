@@ -28,6 +28,10 @@ export type TippData = {
   // Kun på fasit: den ekte 16-delsfinale-oppstillingen (kampnr -> lagene),
   // som sluttspill-tippingen (fase 2) seedes fra. Fylles av auto-henting/admin.
   sluttspilloppsett?: Record<string, { hjemme: string; borte: string }>;
+  // Kun på fasit: løpende gruppetabeller (til visning på resultatsiden).
+  tabeller?: Partial<
+    Record<Gruppe, { lag: string; poeng: number; mf: number; spilt: number }[]>
+  >;
 };
 
 // Gruppene med treer, i prioritert rekkefølge (1. = best). Bruker lagret
@@ -160,6 +164,7 @@ export function sanérTipp(input: TippData): TippData {
     treerrekkefolge: input.treerrekkefolge ? [...input.treerrekkefolge] : undefined,
     vinnere: { ...(input.vinnere ?? {}) },
     sluttspilloppsett: input.sluttspilloppsett,
+    tabeller: input.tabeller,
   };
 
   let antallTreere = 0;

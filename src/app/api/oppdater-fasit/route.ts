@@ -6,7 +6,7 @@ import { type TippData, sanérTipp } from "@/lib/tipp";
 import { hentVMKamper, hentVMTabeller } from "@/lib/resultater/footballData";
 import { byggFasit } from "@/lib/resultater/byggFasit";
 
-// Henter resultater fra openfootball og oppdaterer fasit.
+// Henter resultater fra football-data.org og oppdaterer fasit.
 // Kalles enten av Vercel Cron (med Bearer CRON_SECRET) eller manuelt av en
 // innlogget admin (via knappen på admin-siden).
 export async function GET(request: Request) {
@@ -39,6 +39,7 @@ export async function GET(request: Request) {
         ...(eksisterende.sluttspilloppsett ?? {}),
         ...(utledet.sluttspilloppsett ?? {}),
       },
+      tabeller: utledet.tabeller ?? eksisterende.tabeller,
     });
 
     const { error } = await admin.from("fasit").upsert({
