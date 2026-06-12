@@ -60,6 +60,16 @@ export default async function Hjemmeside() {
           />
         </nav>
 
+        <Link
+          href="/statistikk"
+          className="flex w-full flex-col items-start gap-1 rounded-xl border border-zinc-200 p-5 text-left transition hover:border-zinc-400 hover:shadow-sm"
+        >
+          <h2 className="font-semibold">📊 Se Fikens statistikk</h2>
+          <p className="text-sm text-zinc-500">
+            Følg med på hvordan Fiken har tippet.
+          </p>
+        </Link>
+
         <div className="flex w-full flex-col items-center gap-4 rounded-xl border border-zinc-200 p-5 text-center sm:flex-row sm:text-left">
           <Image
             src="/gave.svg"
