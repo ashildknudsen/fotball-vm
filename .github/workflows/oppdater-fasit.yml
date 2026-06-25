@@ -1,0 +1,27 @@
+name: Oppdater fasit fortløpende
+
+# Henter resultater fra football-data.org og oppdaterer fasit (16-delsfinale-
+# oppstilling, kampstart-tider og resultater) hvert 15. minutt. Brukes fordi
+# Vercel Hobby-planen kun kjører egne cron-jobber én gang i døgnet. Endepunktet
+# /api/oppdater-fasit beskytter seg selv med CRON_SECRET (Bearer-token).
+#
+# Krever én repo-secret: CRON_SECRET – samme verdi som i Vercel-prosjektets
+# miljøvariabel CRON_SECRET. (Settings → Secrets and variables → Actions.)
+
+on:
+  schedule:
+    # Hvert 15. minutt. Merk: GitHub kan forsinke planlagte kjøringer ved høy last.
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {} # lar deg kjøre den manuelt fra Actions-fanen
+
+jobs:
+  oppdater:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kall /api/oppdater-fasit
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS --retry 2 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://fotball-vm.vercel.app/api/oppdater-fasit"
