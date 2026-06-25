@@ -1,14 +1,24 @@
 import Image from "next/image";
 import Link from "next/link";
 import { hentEllerOpprettProfil, erAdmin } from "@/lib/profil";
-import { tippingErLåst, tippefristTekst, tippefrist } from "@/lib/tipp";
+import {
+  tippingErLåst,
+  tippefristTekst,
+  tippefrist,
+  sluttspillErLåst,
+  sluttspillfristTekst,
+  sluttspillfrist,
+} from "@/lib/tipp";
+import { FASE } from "@/lib/fase";
 import Nedtelling from "@/components/Nedtelling";
 
 export default async function Hjemmeside() {
   const profil = await hentEllerOpprettProfil();
   const admin = erAdmin(profil.epost);
-  const låst = tippingErLåst();
-  const frist = tippefristTekst();
+  const erSluttspill = FASE === "sluttspill";
+  const låst = erSluttspill ? sluttspillErLåst() : tippingErLåst();
+  const frist = erSluttspill ? sluttspillfristTekst() : tippefristTekst();
+  const fristMs = erSluttspill ? sluttspillfrist().getTime() : tippefrist().getTime();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -29,16 +39,26 @@ export default async function Hjemmeside() {
 
         {låst ? (
           <p className="w-full rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Tippefristen ({frist}) har gått ut – tipsene er låst. Følg med på
-            resultattavlen!
+            {erSluttspill ? "Sluttspillfristen" : "Tippefristen"} ({frist}) har
+            gått ut – tipsene er låst. Følg med på resultattavlen!
           </p>
         ) : (
           <div className="flex w-full flex-col items-center gap-3 rounded-lg bg-[#5239ba]/10 px-4 py-4 text-center">
             <p className="text-sm text-zinc-700">
-              Konkurransen er åpen frem til <strong>{frist}</strong>. Bli med å
-              tippe kampresultater før det!
+              {erSluttspill ? (
+                <>
+                  Sluttspillet er åpent! Tipp deg gjennom hele treet frem til{" "}
+                  <strong>{frist}</strong>. Hver kamp låses når den starter, så
+                  vær tidlig ute.
+                </>
+              ) : (
+                <>
+                  Konkurransen er åpen frem til <strong>{frist}</strong>. Bli med
+                  å tippe kampresultater før det!
+                </>
+              )}
             </p>
-            <Nedtelling frist={tippefrist().getTime()} />
+            <Nedtelling frist={fristMs} />
           </div>
         )}
 
@@ -46,9 +66,17 @@ export default async function Hjemmeside() {
           <HandlingsKort
             href="/tipp"
             emoji="👉"
-            tittel="Bli med i konkurransen"
-            beskrivelse="Tipp hvem som går videre fra gruppespillet."
-            knapp="Start tipping av gruppespillet"
+            tittel={erSluttspill ? "Tipp sluttspillet" : "Bli med i konkurransen"}
+            beskrivelse={
+              erSluttspill
+                ? "Tipp deg gjennom sluttspilltreet – fra 16-delsfinalen til finalen."
+                : "Tipp hvem som går videre fra gruppespillet."
+            }
+            knapp={
+              erSluttspill
+                ? "Start tipping av sluttspillet"
+                : "Start tipping av gruppespillet"
+            }
           />
           <HandlingsKort
             href="/resultater"

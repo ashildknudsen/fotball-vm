@@ -5,6 +5,7 @@ import {
   finalistBonus,
   finnKamp,
   grupper,
+  kampstart,
   lagIGruppe,
   poengPerRunde,
   sluttspill,
@@ -28,6 +29,10 @@ export type TippData = {
   // Kun på fasit: den ekte 16-delsfinale-oppstillingen (kampnr -> lagene),
   // som sluttspill-tippingen (fase 2) seedes fra. Fylles av auto-henting/admin.
   sluttspilloppsett?: Record<string, { hjemme: string; borte: string }>;
+  // Kun på fasit: avsparkstidspunkt (ISO) per sluttspillkamp (kampnr -> dato).
+  // Brukes til å låse hver kamp for tipping når den starter. Fylles av
+  // auto-hentingen fra football-data.org når lagene i kampen er kjent.
+  kamptider?: Record<string, string>;
   // Kun på fasit: løpende gruppetabeller (til visning på resultatsiden).
   tabeller?: Partial<
     Record<Gruppe, { lag: string; poeng: number; mf: number; spilt: number }[]>
@@ -120,19 +125,35 @@ export function deltakerePåKampSluttspill(
   const kamp = finnKamp(kampnummer);
   if (!kamp) return { hjemme: null, borte: null };
 
-  // 16-delsfinalen: bruk den ekte oppstillingen der den finnes.
+  // 16-delsfinalen seedes KUN fra den ekte oppstillingen (fasit.sluttspilloppsett),
+  // som fylles av resultathentingen når lagene faktisk er trukket. Er den ikke
+  // klar ennå, står kampen som «Ubestemt» – vi gjetter ikke ut fra (uferdige
+  // eller foreløpige) gruppetabeller.
   const oppsett = fasit.sluttspilloppsett?.[String(kampnummer)];
   if (oppsett) {
     return { hjemme: oppsett.hjemme ?? null, borte: oppsett.borte ?? null };
   }
 
-  const tildeling = treerTildeling(fasit);
+  // En gruppe regnes som ferdig når alle fire lag har spilt sine 3 kamper.
+  // Først da er 1.-/2.-plass låst og trygg å bruke til R16-seeding.
+  const gruppeErFerdig = (gruppe: Gruppe): boolean => {
+    const tabell = fasit.tabeller?.[gruppe];
+    return Boolean(
+      tabell && tabell.length >= 4 && tabell.every((r) => r.spilt >= 3),
+    );
+  };
+
+  // Senere runder løses fra brukerens egne vinner-valg oppover i treet.
   const løs = (ref: Plassreferanse): string | null => {
     switch (ref.type) {
       case "gruppe":
-        return løsReferanse(ref, fasit); // ekte gruppe-resultat
+        // Entydig så snart gruppa er ferdigspilt – da kan kampen tippes selv om
+        // API-et ennå ikke har publisert det offisielle R16-oppsettet.
+        return gruppeErFerdig(ref.gruppe) ? løsReferanse(ref, fasit) : null;
       case "treer":
-        return tildeling[String(kampnummer)] ?? null;
+        // Treer-slottene krever FIFAs offisielle fordeling av de 8 beste 3.-
+        // plassene. Seedes kun fra ekte oppsett (over) – ellers «Ubestemt».
+        return null;
       case "vinner":
         return brukerTipp.vinnere?.[String(ref.kamp)] ?? null;
       case "taper": {
@@ -164,6 +185,7 @@ export function sanérTipp(input: TippData): TippData {
     treerrekkefolge: input.treerrekkefolge ? [...input.treerrekkefolge] : undefined,
     vinnere: { ...(input.vinnere ?? {}) },
     sluttspilloppsett: input.sluttspilloppsett,
+    kamptider: input.kamptider,
     tabeller: input.tabeller,
   };
 
@@ -281,13 +303,33 @@ export function tippingErLåst(): boolean {
   return new Date() >= tippefrist();
 }
 
-// Sluttspill-fristen (fase 2). Default: 16-delsfinalen starter 28.06 kl. 21.
+// Felles sluttfrist for sluttspillet (fase 2): siste sjanse til å tippe hele
+// treet. Default: tirsdag 30. juni 2026 kl. 16 (norsk tid = 14:00 UTC).
+// Enkeltkamper som starter FØR denne fristen låses likevel ved sitt eget
+// avspark – se kampLåst(). Kan overstyres med SLUTTSPILLFRIST (ISO 8601).
 export function sluttspillfrist(): Date {
-  return new Date(process.env.SLUTTSPILLFRIST ?? "2026-06-28T19:00:00Z");
+  return new Date(process.env.SLUTTSPILLFRIST ?? "2026-06-30T14:00:00Z");
 }
 
+// Er den felles sluttfristen passert? Da er HELE sluttspillet låst.
 export function sluttspillErLåst(): boolean {
   return new Date() >= sluttspillfrist();
+}
+
+// Avsparkstidspunktet for en sluttspillkamp. Bruker den ekte fixture-tiden fra
+// fasiten når lagene er kjent, ellers det hardkodede FIFA-oppsettet.
+export function kampStart(kampnummer: number, fasit: TippData): Date | null {
+  const iso = fasit.kamptider?.[String(kampnummer)] ?? kampstart[kampnummer];
+  return iso ? new Date(iso) : null;
+}
+
+// Er en enkelt sluttspillkamp låst for tipping? Den låses ved det FØRSTE av:
+//  - kampens eget avspark (så man aldri kan tippe en kamp som er i gang), eller
+//  - den felles sluttfristen (som låser alt som ikke alt er låst).
+export function kampLåst(kampnummer: number, fasit: TippData): boolean {
+  if (sluttspillErLåst()) return true;
+  const start = kampStart(kampnummer, fasit);
+  return start !== null && new Date() >= start;
 }
 
 export function sluttspillfristTekst(): string {
