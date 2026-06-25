@@ -38,6 +38,7 @@ export function byggFasit(
     gruppe: {},
     vinnere: {},
     sluttspilloppsett: {},
+    kamptider: {},
     tabeller: {},
   };
 
@@ -144,6 +145,10 @@ export function byggFasit(
     if (!m) continue;
     brukt.add(m.id);
     if (m.vinnerId) fasit.vinnere![String(kamp.nummer)] = m.vinnerId;
+
+    // Lagre avsparkstidspunktet, slik at kampen kan låses for tipping når den
+    // starter (kampLåst i tipp.ts). Settes så snart begge lag er kjent.
+    if (m.dato) fasit.kamptider![String(kamp.nummer)] = m.dato;
 
     // Lagre den ekte 16-delsfinale-oppstillingen (til seeding av fase 2).
     if (kamp.runde === "16-delsfinale" && m.homeId && m.awayId) {

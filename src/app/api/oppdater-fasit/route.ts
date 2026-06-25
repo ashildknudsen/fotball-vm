@@ -39,6 +39,10 @@ export async function GET(request: Request) {
         ...(eksisterende.sluttspilloppsett ?? {}),
         ...(utledet.sluttspilloppsett ?? {}),
       },
+      kamptider: {
+        ...(eksisterende.kamptider ?? {}),
+        ...(utledet.kamptider ?? {}),
+      },
       tabeller: utledet.tabeller ?? eksisterende.tabeller,
     });
 

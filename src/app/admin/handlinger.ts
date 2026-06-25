@@ -36,6 +36,7 @@ export async function lagreFasit(
   const lagret: TippData = {
     ...data,
     sluttspilloppsett: data.sluttspilloppsett ?? eksisterende.sluttspilloppsett,
+    kamptider: data.kamptider ?? eksisterende.kamptider,
     tabeller: data.tabeller ?? eksisterende.tabeller,
   };
 

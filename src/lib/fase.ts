@@ -4,4 +4,4 @@
 // Endre denne når fase 2 skal åpnes.
 export type Fase = "gruppespill" | "sluttspill";
 
-export const FASE: Fase = "gruppespill";
+export const FASE: Fase = "sluttspill";
