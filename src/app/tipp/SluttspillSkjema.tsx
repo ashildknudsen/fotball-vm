@@ -196,7 +196,7 @@ export default function SluttspillSkjema({
       <div className="flex flex-col gap-6 lg:hidden">
         {STACK_RUNDER.map((runde) => (
           <section key={runde.tittel} className="flex flex-col gap-2">
-            <h3 className="text-sm font-semibold text-zinc-500">{runde.tittel}</h3>
+            <h3 className="text-sm font-semibold text-zinc-700">{runde.tittel}</h3>
             <div className="flex flex-col gap-2">
               {runde.kamper.map((nr) => (
                 <div key={nr}>{kortFor(nr, { medaljer: runde.medaljer })}</div>
@@ -211,7 +211,7 @@ export default function SluttspillSkjema({
         <div className="flex min-w-max items-stretch">
           {sluttspillKolonner.map((kolonne) => (
             <div key={kolonne.tittel} className="flex items-stretch">
-              <div className="flex w-56 flex-col">
+              <div className="flex w-44 flex-col">
                 <Kolonnetittel>{kolonne.tittel}</Kolonnetittel>
                 <div className="flex flex-1 flex-col">
                   {kolonne.kamper.map((nr) => (
@@ -231,7 +231,7 @@ export default function SluttspillSkjema({
           ))}
 
           {/* Finaler: finale (gull/sølv) + bronsefinale (bronse). */}
-          <div className="flex w-56 flex-col">
+          <div className="flex w-44 flex-col">
             <Kolonnetittel>Finaler</Kolonnetittel>
             <div className="flex flex-1 flex-col justify-center gap-3 px-1.5">
               {kortFor(104, { medaljer: { vinner: "🥇", taper: "🥈" }, visRundeNavn: true })}
@@ -286,7 +286,7 @@ export default function SluttspillSkjema({
 
 function Kolonnetittel({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="mb-2 px-1.5 text-center text-xs font-semibold text-zinc-400">
+    <h4 className="mb-2 px-1.5 text-center text-xs font-semibold text-zinc-600">
       {children}
     </h4>
   );
@@ -298,7 +298,7 @@ function Kolonnetittel({ children }: { children: React.ReactNode }) {
 // Tittelhøyden speiles med en usynlig tittel så flex-områdene flukter.
 function Kobling({ antallPar }: { antallPar: number }) {
   return (
-    <div className="flex w-8 flex-col">
+    <div className="flex w-6 flex-col">
       <Kolonnetittel>
         <span className="opacity-0">.</span>
       </Kolonnetittel>
@@ -349,7 +349,7 @@ function Kampkort({
         låst ? "border-zinc-200 bg-zinc-50" : "border-zinc-200 bg-white"
       }`}
     >
-      <div className="mb-1 flex items-center justify-between gap-1 px-0.5 text-[10px] leading-tight text-zinc-400">
+      <div className="mb-1 flex items-center justify-between gap-1 px-0.5 text-[10px] leading-tight text-zinc-500">
         <span className="truncate">{etikett}</span>
         {låst && (
           <span className="inline-flex shrink-0 items-center gap-0.5 font-medium text-zinc-500">
