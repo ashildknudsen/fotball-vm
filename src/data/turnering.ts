@@ -176,6 +176,17 @@ export function finnKamp(nummer: number): Sluttspillkamp | undefined {
   return sluttspill.find((k) => k.nummer === nummer);
 }
 
+// Visningsrekkefølge for sluttspill-bracketen (de fire flerkamps-rundene).
+// Hvert PAR (to og to nedover) mater neste rundes kamp i rekkefølge, så
+// connector-linjene treffer riktig. Brukes av BÅDE tippeskjemaet og
+// resultatvisningen, så de viser nøyaktig samme oppsett.
+export const sluttspillKolonner: { tittel: string; kamper: number[] }[] = [
+  { tittel: "16-delsfinale", kamper: [73, 75, 74, 77, 83, 84, 81, 82, 76, 78, 79, 80, 86, 88, 85, 87] },
+  { tittel: "8-delsfinale", kamper: [89, 90, 93, 94, 91, 92, 95, 96] },
+  { tittel: "Kvartfinale", kamper: [97, 98, 99, 100] },
+  { tittel: "Semifinale", kamper: [101, 102] },
+];
+
 // Poeng per riktig tippet vinner. Flatere kurve enn før: hver flerkamps-runde
 // makser likt (16 p), med en liten hale på bronse/finale, så ingen enkeltkamp
 // velter hele tavla mot slutten. Gruppespillet er urørt (maks 32 p).
