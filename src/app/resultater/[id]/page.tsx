@@ -46,7 +46,7 @@ export default async function DeltakerSide({
     erMeg || (FASE === "sluttspill" ? sluttspillErLåst() : tippingErLåst());
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-8">
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-8">
       <Link
         href="/resultater"
         className="text-sm text-zinc-500 hover:text-zinc-800"

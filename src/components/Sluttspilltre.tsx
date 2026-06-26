@@ -27,6 +27,21 @@ function kampstartTekst(iso: string): string {
   return `${dag} Kl. ${tid}`;
 }
 
+function range(fra: number, til: number): number[] {
+  return Array.from({ length: til - fra + 1 }, (_, i) => fra + i);
+}
+
+// Rundene i stacket (mobil) rekkefølge – numerisk, med egne seksjoner for
+// finale og bronsefinale. Speiler tippeskjemaet.
+const STACK_RUNDER: { tittel: string; kamper: number[]; medaljer?: Medaljer }[] = [
+  { tittel: "16-delsfinale", kamper: range(73, 88) },
+  { tittel: "8-delsfinale", kamper: range(89, 96) },
+  { tittel: "Kvartfinale", kamper: range(97, 100) },
+  { tittel: "Semifinale", kamper: [101, 102] },
+  { tittel: "Finale", kamper: [104], medaljer: { vinner: "🥇", taper: "🥈" } },
+  { tittel: "Bronsefinale", kamper: [103], medaljer: { vinner: "🥉" } },
+];
+
 // Tegner et sluttspill-tre (read-only) i NØYAKTIG samme bracket-oppsett som
 // tippeskjemaet: kolonner i delt rekkefølge (`sluttspillKolonner`), connector-
 // linjer mellom rundene og en egen finale-kolonne. Hvis `fasit` er gitt (fase 2)
@@ -77,11 +92,26 @@ export default function Sluttspilltre({
         </p>
       )}
 
-      <div className="overflow-x-auto pb-2">
+      {/* Mobil/nettbrett: stacket liste, én runde av gangen. */}
+      <div className="flex flex-col gap-6 lg:hidden">
+        {STACK_RUNDER.map((runde) => (
+          <section key={runde.tittel} className="flex flex-col gap-2">
+            <h4 className="text-sm font-semibold text-zinc-500">{runde.tittel}</h4>
+            <div className="flex flex-col gap-2">
+              {runde.kamper.map((nr) => (
+                <div key={nr}>{kortFor(nr, { medaljer: runde.medaljer })}</div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      {/* Desktop: bracket-tre med connector-linjer. */}
+      <div className="hidden overflow-x-auto pb-2 lg:block">
         <div className="flex min-w-max items-stretch">
           {sluttspillKolonner.map((kolonne) => (
             <div key={kolonne.tittel} className="flex items-stretch">
-              <div className="flex w-44 flex-col sm:w-52">
+              <div className="flex w-44 flex-col">
                 <Kolonnetittel>{kolonne.tittel}</Kolonnetittel>
                 <div className="flex flex-1 flex-col">
                   {kolonne.kamper.map((nr) => (
@@ -99,7 +129,7 @@ export default function Sluttspilltre({
           ))}
 
           {/* Finaler: finale (gull/sølv) + bronsefinale (bronse). */}
-          <div className="flex w-44 flex-col sm:w-52">
+          <div className="flex w-44 flex-col">
             <Kolonnetittel>Finaler</Kolonnetittel>
             <div className="flex flex-1 flex-col justify-center gap-3 px-1.5">
               {kortFor(104, { medaljer: { vinner: "🥇", taper: "🥈" }, rundeNavn: "Finale" })}
@@ -123,7 +153,7 @@ function Kolonnetittel({ children }: { children: React.ReactNode }) {
 // Connector-linjene mellom to runder – identisk med tippeskjemaet.
 function Kobling({ antallPar }: { antallPar: number }) {
   return (
-    <div className="flex w-6 flex-col sm:w-8">
+    <div className="flex w-6 flex-col">
       <Kolonnetittel>
         <span className="opacity-0">.</span>
       </Kolonnetittel>
