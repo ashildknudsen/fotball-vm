@@ -176,19 +176,22 @@ export function finnKamp(nummer: number): Sluttspillkamp | undefined {
   return sluttspill.find((k) => k.nummer === nummer);
 }
 
-// Poeng per riktig tippet lag, mer jo lenger ut i sluttspillet.
+// Poeng per riktig tippet vinner. Flatere kurve enn før: hver flerkamps-runde
+// makser likt (16 p), med en liten hale på bronse/finale, så ingen enkeltkamp
+// velter hele tavla mot slutten. Gruppespillet er urørt (maks 32 p).
+//   Sluttspill maks: 16 + 16 + 16 + 16 + 4 + 8 = 76 p.
 export const poengPerRunde: Record<RundeType | "gruppe", number> = {
   gruppe: 1, // riktig lag videre fra gruppespill (1.- eller 2.-plass)
-  "16-delsfinale": 2,
-  "8-delsfinale": 3,
-  kvartfinale: 5,
-  semifinale: 8,
-  bronsefinale: 10,
-  finale: 15,
+  "16-delsfinale": 1, // 16 kamper → 16
+  "8-delsfinale": 2, //  8 kamper → 16
+  kvartfinale: 4, //  4 kamper → 16
+  semifinale: 8, //  2 kamper → 16
+  bronsefinale: 4, //  1 kamp   → 4
+  finale: 8, //  1 kamp   → 8
 };
 
 // Bonus per lag man har riktig i finalen (opptil to lag).
-export const finalistBonus = 5;
+export const finalistBonus = 3;
 
 // Avsparkstidspunkt (ISO/UTC) per sluttspillkamp – det offisielle FIFA 2026-
 // oppsettet, hentet fra football-data.org-fixturene. Brukes til å vise dato på
