@@ -39,10 +39,11 @@ export default async function DeltakerSide({
   const harTippet = Boolean(tippRad);
   const erLevert = tippRad?.levert ?? false;
 
-  // Andres tips er skjult til fristen har gått ut. Ditt eget ser du alltid.
+  // Andres tips er helt skjult til fristen har gått ut – i sluttspillet gjelder
+  // den felles sluttfristen (30. juni). Ditt eget ser du alltid.
   const erMeg = id === meg.id;
-  const gruppeSynlig = erMeg || tippingErLåst();
-  const sluttspillSynlig = erMeg || sluttspillErLåst();
+  const synlig =
+    erMeg || (FASE === "sluttspill" ? sluttspillErLåst() : tippingErLåst());
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-8">
@@ -75,10 +76,11 @@ export default async function DeltakerSide({
         </span>
       </header>
 
-      {!gruppeSynlig ? (
+      {!synlig ? (
         <p className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900">
-          Du kan ikke se andres tips før tippefristen har gått ut (
-          {tippefristTekst()}). Ditt eget kan du alltid se.
+          {FASE === "sluttspill"
+            ? `Du kan ikke se andres tips før sluttspillfristen har gått ut (${sluttspillfristTekst()}). Ditt eget kan du alltid se.`
+            : `Du kan ikke se andres tips før tippefristen har gått ut (${tippefristTekst()}). Ditt eget kan du alltid se.`}
         </p>
       ) : !harTippet ? (
         <p className="rounded-lg bg-zinc-50 px-4 py-3 text-zinc-500">
@@ -86,6 +88,13 @@ export default async function DeltakerSide({
         </p>
       ) : (
         <>
+          {FASE === "sluttspill" && (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-lg font-bold">Sluttspill</h2>
+              <Sluttspilltre tipp={tipp} fasit={fasit} />
+            </section>
+          )}
+
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-bold">Videre fra gruppene</h2>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -94,19 +103,6 @@ export default async function DeltakerSide({
               ))}
             </div>
           </section>
-
-          {FASE === "sluttspill" &&
-            (sluttspillSynlig ? (
-              <section className="flex flex-col gap-3">
-                <h2 className="text-lg font-bold">Sluttspill</h2>
-                <Sluttspilltre tipp={tipp} fasit={fasit} />
-              </section>
-            ) : (
-              <p className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900">
-                Sluttspill-tipset blir synlig når sluttspillfristen har gått ut (
-                {sluttspillfristTekst()}).
-              </p>
-            ))}
         </>
       )}
     </main>

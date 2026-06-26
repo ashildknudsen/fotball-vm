@@ -2,12 +2,20 @@ import Link from "next/link";
 import { Lock, PencilLine } from "lucide-react";
 import { hentEllerOpprettProfil } from "@/lib/profil";
 import { lagAdminKlient } from "@/lib/supabase/admin";
-import { type TippData, beregnPoeng, tippingErLåst } from "@/lib/tipp";
+import {
+  type TippData,
+  beregnPoengDetaljer,
+  tippingErLåst,
+  sluttspillErLåst,
+} from "@/lib/tipp";
 import { type Gruppe, grupper, finnLag } from "@/data/turnering";
+import { FASE } from "@/lib/fase";
 
 type Rad = {
   id: string;
   navn: string;
+  gruppePoeng: number;
+  sluttspillPoeng: number;
   poeng: number;
   levert: boolean;
   erMeg: boolean;
@@ -30,17 +38,24 @@ export default async function ResultatSide() {
   );
 
   const rader: Rad[] = (tippRader ?? [])
-    .map((t) => ({
-      id: t.bruker_id as string,
-      navn: navnFor.get(t.bruker_id as string) ?? "Ukjent",
-      poeng: beregnPoeng(t.data as TippData, fasit),
-      levert: Boolean(t.levert),
-      erMeg: t.bruker_id === profil.id,
-    }))
+    .map((t) => {
+      const d = beregnPoengDetaljer(t.data as TippData, fasit);
+      return {
+        id: t.bruker_id as string,
+        navn: navnFor.get(t.bruker_id as string) ?? "Ukjent",
+        gruppePoeng: d.gruppe,
+        sluttspillPoeng: d.sluttspill,
+        poeng: d.total,
+        levert: Boolean(t.levert),
+        erMeg: t.bruker_id === profil.id,
+      };
+    })
     .sort((a, b) => b.poeng - a.poeng || a.navn.localeCompare(b.navn));
 
-  // Andres oppsett kan først åpnes når tippefristen har gått ut.
-  const kanSeAndres = tippingErLåst();
+  // Andres oppsett kan først åpnes når fristen har gått ut – i sluttspillet
+  // gjelder den felles sluttfristen (30. juni), ellers gruppespill-fristen.
+  const kanSeAndres =
+    FASE === "sluttspill" ? sluttspillErLåst() : tippingErLåst();
 
   // Gruppestilling + foreløpig/endelig.
   const tabeller = fasit.tabeller ?? {};
@@ -74,12 +89,12 @@ export default async function ResultatSide() {
           </li>
           <li>
             <strong>Sluttspill:</strong> poeng for hver riktig tippet kampvinner
-            – flere poeng jo lenger ut: 16-delsfinale 2 poeng, åttendelsfinale 3
-            poeng, kvartfinale 5 poeng, semifinale 8 poeng, bronsefinale 10
-            poeng, finale 15 poeng.
+            – flere poeng jo lenger ut: 16-delsfinale 1 poeng, åttendelsfinale 2
+            poeng, kvartfinale 4 poeng, semifinale 8 poeng, bronsefinale 4 poeng,
+            finale 8 poeng.
           </li>
           <li>
-            <strong>Bonus:</strong> +5 poeng for hvert lag du har riktig i
+            <strong>Bonus:</strong> +3 poeng for hvert lag du har riktig i
             finalen.
           </li>
         </ul>
@@ -99,16 +114,21 @@ export default async function ResultatSide() {
                 <span className="w-6 text-center text-sm font-bold text-zinc-400">
                   {plassering(i)}
                 </span>
-                <span className="flex flex-1 items-center gap-2 font-medium">
-                  {r.navn}
-                  {!r.levert && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[#ddd8fe] px-2 py-0.5 text-xs font-medium text-[#5239ba]">
-                      <PencilLine className="h-3 w-3" />
-                      Kladd
-                    </span>
-                  )}
+                <span className="flex flex-1 flex-col gap-0.5">
+                  <span className="flex items-center gap-2 font-medium">
+                    {r.navn}
+                    {!r.levert && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[#ddd8fe] px-2 py-0.5 text-xs font-medium text-[#5239ba]">
+                        <PencilLine className="h-3 w-3" />
+                        Kladd
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-xs text-zinc-400">
+                    Gruppe {r.gruppePoeng} · Sluttspill {r.sluttspillPoeng}
+                  </span>
                 </span>
-                <span className="text-lg font-bold tabular-nums">
+                <span className="text-right text-lg font-bold tabular-nums">
                   {r.poeng}
                   <span className="ml-1 text-xs font-normal text-zinc-400">
                     p

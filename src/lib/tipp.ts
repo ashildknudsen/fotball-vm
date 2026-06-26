@@ -246,36 +246,39 @@ export function sanérSluttspill(
   return tipp;
 }
 
-// Beregner poeng for en kupong sammenlignet med fasit.
-export function beregnPoeng(tipp: TippData, fasit: TippData): number {
-  let poeng = 0;
+// Poeng delt på gruppespill og sluttspill (finalist-bonus regnes som sluttspill).
+export type PoengDetaljer = { gruppe: number; sluttspill: number; total: number };
 
-  for (const gruppe of Object.keys(fasit.gruppe ?? {}) as Gruppe[]) {
+// Beregner poeng for en kupong sammenlignet med fasit, delt på del.
+export function beregnPoengDetaljer(
+  tipp: TippData,
+  fasit: TippData,
+): PoengDetaljer {
+  let gruppe = 0;
+  for (const g of Object.keys(fasit.gruppe ?? {}) as Gruppe[]) {
     // Gruppespill: poeng per lag riktig videre (1.- eller 2.-plass).
     const fasitLag = new Set(
-      [fasit.gruppe?.[gruppe]?.vinner, fasit.gruppe?.[gruppe]?.toer].filter(
+      [fasit.gruppe?.[g]?.vinner, fasit.gruppe?.[g]?.toer].filter(
         Boolean,
       ) as string[],
     );
-    for (const lag of [
-      tipp.gruppe?.[gruppe]?.vinner,
-      tipp.gruppe?.[gruppe]?.toer,
-    ]) {
-      if (lag && fasitLag.has(lag)) poeng += poengPerRunde.gruppe;
+    for (const lag of [tipp.gruppe?.[g]?.vinner, tipp.gruppe?.[g]?.toer]) {
+      if (lag && fasitLag.has(lag)) gruppe += poengPerRunde.gruppe;
     }
 
     // Treer: poeng hvis riktig lag er markert som treer i gruppa.
-    const fasitTreer = fasit.gruppe?.[gruppe]?.treer;
-    if (fasitTreer && tipp.gruppe?.[gruppe]?.treer === fasitTreer) {
-      poeng += poengPerRunde.gruppe;
+    const fasitTreer = fasit.gruppe?.[g]?.treer;
+    if (fasitTreer && tipp.gruppe?.[g]?.treer === fasitTreer) {
+      gruppe += poengPerRunde.gruppe;
     }
   }
 
-  // Sluttspill: poeng per riktig tippet kampvinner, skalert etter runde.
+  let sluttspill = 0;
+  // Poeng per riktig tippet kampvinner, skalert etter runde.
   for (const [kampnummer, fasitVinner] of Object.entries(fasit.vinnere ?? {})) {
     if (tipp.vinnere?.[kampnummer] === fasitVinner) {
       const kamp = finnKamp(Number(kampnummer));
-      if (kamp) poeng += poengPerRunde[kamp.runde];
+      if (kamp) sluttspill += poengPerRunde[kamp.runde];
     }
   }
 
@@ -286,11 +289,16 @@ export function beregnPoeng(tipp: TippData, fasit: TippData): number {
   );
   if (fasitFinalister.size > 0) {
     for (const lag of [tipp.vinnere?.["101"], tipp.vinnere?.["102"]]) {
-      if (lag && fasitFinalister.has(lag)) poeng += finalistBonus;
+      if (lag && fasitFinalister.has(lag)) sluttspill += finalistBonus;
     }
   }
 
-  return poeng;
+  return { gruppe, sluttspill, total: gruppe + sluttspill };
+}
+
+// Beregner totalpoeng for en kupong sammenlignet med fasit.
+export function beregnPoeng(tipp: TippData, fasit: TippData): number {
+  return beregnPoengDetaljer(tipp, fasit).total;
 }
 
 // Tippefristen som dato. Settes via env (ISO-dato), default kickoff 2026.

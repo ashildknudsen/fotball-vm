@@ -7,6 +7,7 @@ import {
   finnKamp,
   finnLag,
   kampstart,
+  sluttspillKolonner,
 } from "@/data/turnering";
 import {
   type TippData,
@@ -14,16 +15,6 @@ import {
   sanérSluttspill,
 } from "@/lib/tipp";
 import { type LagreResultat } from "./TippeSkjema";
-
-// Bracket-rekkefølge per kolonne: matchene er sortert slik at hvert PAR (to og
-// to nedover) mater neste rundes kamp i tur og orden. Det er det som gjør at
-// connector-linjene mellom kolonnene treffer riktig.
-const KOLONNER: { tittel: string; kamper: number[] }[] = [
-  { tittel: "16-delsfinale", kamper: [73, 75, 74, 77, 83, 84, 81, 82, 76, 78, 79, 80, 86, 88, 85, 87] },
-  { tittel: "8-delsfinale", kamper: [89, 90, 93, 94, 91, 92, 95, 96] },
-  { tittel: "Kvartfinale", kamper: [97, 98, 99, 100] },
-  { tittel: "Semifinale", kamper: [101, 102] },
-];
 
 type Medaljer = { vinner?: string; taper?: string };
 
@@ -218,7 +209,7 @@ export default function SluttspillSkjema({
       {/* Desktop: bracket-tre med connector-linjer. */}
       <div className="hidden overflow-x-auto pb-4 lg:block">
         <div className="flex min-w-max items-stretch">
-          {KOLONNER.map((kolonne) => (
+          {sluttspillKolonner.map((kolonne) => (
             <div key={kolonne.tittel} className="flex items-stretch">
               <div className="flex w-56 flex-col">
                 <Kolonnetittel>{kolonne.tittel}</Kolonnetittel>
