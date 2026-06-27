@@ -42,8 +42,10 @@ export function byggFasit(
     tabeller: {},
   };
 
-  // Forbered alle knockout-kamper der begge lag er kjent (sortert på dato).
-  const knockout: KnockoutKamp[] = kamper
+  // Alle knockout-kamper fra API-et, sortert på dato. Inkluderer kamper der
+  // lagene ennå ikke er kjent (homeId/awayId kan være null) – brukes til å
+  // hente kamptidspunkter selv om bare ett lag er avklart (f.eks. treer-kamper).
+  const alleKnockout: KnockoutKamp[] = kamper
     .filter((k) => k.stage && k.stage.toUpperCase() !== "GROUP_STAGE")
     .map((k) => {
       const homeId = finnLagId(k.homeTeam.name, k.homeTeam.shortName);
@@ -56,8 +58,26 @@ export function byggFasit(
             : null;
       return { id: k.id, homeId, awayId, vinnerId, dato: k.utcDate };
     })
-    .filter((k) => k.homeId && k.awayId)
     .sort((a, b) => a.dato.localeCompare(b.dato));
+
+  // Kun kamper der begge lag er kjent – for vinner-matching og R16-oppsett.
+  const knockout = alleKnockout.filter((k) => k.homeId && k.awayId);
+
+  logg.push(`API knockout-kamper totalt: ${alleKnockout.length} (begge lag kjent: ${knockout.length})`);
+
+  // Logg ukjente lagnavn fra API-et for debugging.
+  const ukjente = kamper
+    .filter((k) => k.stage && k.stage.toUpperCase() !== "GROUP_STAGE")
+    .flatMap((k) => {
+      const ukj: string[] = [];
+      if (k.homeTeam.name && !finnLagId(k.homeTeam.name, k.homeTeam.shortName))
+        ukj.push(k.homeTeam.name);
+      if (k.awayTeam.name && !finnLagId(k.awayTeam.name, k.awayTeam.shortName))
+        ukj.push(k.awayTeam.name);
+      return ukj;
+    });
+  if (ukjente.length > 0)
+    logg.push(`Ukjente lagnavn fra API: ${[...new Set(ukjente)].join(", ")}`);
 
   // 1) Gruppespill: full tabell per gruppe (alle 4 lag), 1.- og 2.-plass, og
   // de 8 beste treerne ut fra LØPENDE stilling (foreløpig under gruppespillet).
@@ -142,20 +162,26 @@ export function byggFasit(
             (k.homeId === borte && k.awayId === hjemme)),
       );
     }
-    if (!m) continue;
-    brukt.add(m.id);
-    if (m.vinnerId) fasit.vinnere![String(kamp.nummer)] = m.vinnerId;
-
-    // Lagre avsparkstidspunktet, slik at kampen kan låses for tipping når den
-    // starter (kampLåst i tipp.ts). Settes så snart begge lag er kjent.
-    if (m.dato) fasit.kamptider![String(kamp.nummer)] = m.dato;
-
-    // Lagre den ekte 16-delsfinale-oppstillingen (til seeding av fase 2).
-    if (kamp.runde === "16-delsfinale" && m.homeId && m.awayId) {
-      fasit.sluttspilloppsett![String(kamp.nummer)] = {
-        hjemme: m.homeId,
-        borte: m.awayId,
-      };
+    if (m) {
+      brukt.add(m.id);
+      if (m.vinnerId) fasit.vinnere![String(kamp.nummer)] = m.vinnerId;
+      if (m.dato) fasit.kamptider![String(kamp.nummer)] = m.dato;
+      if (kamp.runde === "16-delsfinale" && m.homeId && m.awayId) {
+        fasit.sluttspilloppsett![String(kamp.nummer)] = {
+          hjemme: m.homeId,
+          borte: m.awayId,
+        };
+      }
+    } else if (hjemme) {
+      // Begge lag er ikke avklart ennå (typisk treer-kamper), men vi kjenner
+      // minst ett lag – hent tidspunktet fra API-et via det kjente laget.
+      const tidKamp = alleKnockout.find(
+        (k) => !brukt.has(k.id) && (k.homeId === hjemme || k.awayId === hjemme),
+      );
+      if (tidKamp) {
+        brukt.add(tidKamp.id);
+        if (tidKamp.dato) fasit.kamptider![String(kamp.nummer)] = tidKamp.dato;
+      }
     }
   }
 

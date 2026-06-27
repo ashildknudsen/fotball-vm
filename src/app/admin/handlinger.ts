@@ -52,5 +52,6 @@ export async function lagreFasit(
 
   revalidatePath("/admin");
   revalidatePath("/resultater");
+  revalidatePath("/tipp");
   return { ok: true, melding: "Fasit lagret ✅" };
 }

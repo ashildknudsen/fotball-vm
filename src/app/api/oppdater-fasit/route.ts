@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { lagServerKlient } from "@/lib/supabase/server";
 import { lagAdminKlient } from "@/lib/supabase/admin";
 import { erAdmin } from "@/lib/profil";
@@ -6,7 +7,7 @@ import { type TippData, sanérTipp } from "@/lib/tipp";
 import { hentVMKamper, hentVMTabeller } from "@/lib/resultater/footballData";
 import { byggFasit } from "@/lib/resultater/byggFasit";
 
-// Henter resultater fra football-data.org og oppdaterer fasit.
+// Henter resultater fra ESPN Public API og oppdaterer fasit.
 // Kalles enten av Vercel Cron (med Bearer CRON_SECRET) eller manuelt av en
 // innlogget admin (via knappen på admin-siden).
 export async function GET(request: Request) {
@@ -53,6 +54,8 @@ export async function GET(request: Request) {
     });
     if (error) throw new Error(error.message);
 
+    revalidatePath("/tipp");
+    revalidatePath("/resultater");
     return NextResponse.json({ ok: true, logg });
   } catch (feil) {
     const melding = feil instanceof Error ? feil.message : "Ukjent feil";
