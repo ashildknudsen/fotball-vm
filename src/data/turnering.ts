@@ -204,6 +204,12 @@ export const poengPerRunde: Record<RundeType | "gruppe", number> = {
 // Bonus per lag man har riktig i finalen (opptil to lag).
 export const finalistBonus = 3;
 
+// Straff (minuspoeng) for en kamp som tippes ETTER at den har startet. Gjør at
+// folk som var for sent ute likevel kan tippe (og fullføre treet videre), men
+// med en kostnad. Gjelder kamper med avspark før felles frist – andre kamper
+// kan uansett ikke tippes etter avspark (de låses ved fristen).
+export const senTippStraff = 3;
+
 // Avsparkstidspunkt (ISO/UTC) per sluttspillkamp – det offisielle FIFA 2026-
 // oppsettet, hentet fra football-data.org-fixturene. Brukes til å vise dato på
 // hvert kort og til å låse kampen ved avspark allerede før lagene er avklart.

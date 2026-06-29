@@ -8,6 +8,7 @@ import {
   tippingErLåst,
   sluttspillErLåst,
   kampLåst,
+  kampStart,
   sluttspillfristTekst,
 } from "@/lib/tipp";
 import { sluttspill } from "@/data/turnering";
@@ -49,9 +50,18 @@ export default async function TippSide() {
   // låses senest ved den felles sluttfristen. I gruppespill-fasen gjelder kun
   // den ene tippefristen.
   const låsteKamper: Record<string, boolean> = {};
+  // Kamper som alt har startet (avspark passert), men fristen ikke gått ut:
+  // tippes de nå blir det minuspoeng. Brukes til å varsle i skjemaet.
+  const startetKamper: Record<string, boolean> = {};
   if (erSluttspill) {
+    const nå = new Date();
+    const fristPassert = sluttspillErLåst();
     for (const kamp of sluttspill) {
-      låsteKamper[String(kamp.nummer)] = kampLåst(kamp.nummer, fasit);
+      const nøkkel = String(kamp.nummer);
+      låsteKamper[nøkkel] = kampLåst(kamp.nummer, fasit);
+      const start = kampStart(kamp.nummer, fasit);
+      startetKamper[nøkkel] =
+        !fristPassert && start !== null && nå >= start;
     }
   }
   const altLåst = erSluttspill ? sluttspillErLåst() : tippingErLåst();
@@ -98,7 +108,7 @@ export default async function TippSide() {
       ) : (
         <p className="text-sm text-zinc-500">
           {erSluttspill
-            ? `Tipp vinneren av hver sluttspillkamp – fra de ekte 16-delsfinale-lagene og helt til finalen. Hver kamp åpnes når begge lag er klare, og låses når kampen starter. Felles sluttfrist: ${sluttspillfristTekst()}. Lag som ikke er avklart ennå står som «Ubestemt».`
+            ? `Tipp vinneren av hver sluttspillkamp – fra de ekte 16-delsfinale-lagene og helt til finalen. Hver kamp åpnes når begge lag er klare. Felles frist: ${sluttspillfristTekst()}. Kamper som alt har startet kan du fortsatt tippe, men da gir kampen −3 poeng. Lag som ikke er avklart ennå står som «Ubestemt».`
             : "Velg hvem som går videre fra hver gruppe og marker de åtte beste treerne. Du kan lagre underveis og endre fram til fristen."}
         </p>
       )}
@@ -109,6 +119,7 @@ export default async function TippSide() {
           fasit={fasit}
           erLevert={erLevert}
           låsteKamper={låsteKamper}
+          startetKamper={startetKamper}
           altLåst={altLåst}
           påLagre={lagreTipp}
         />
