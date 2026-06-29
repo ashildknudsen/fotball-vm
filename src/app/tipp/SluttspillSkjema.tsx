@@ -68,6 +68,7 @@ export default function SluttspillSkjema({
   fasit,
   erLevert,
   låsteKamper,
+  startetKamper,
   altLåst,
   påLagre,
 }: {
@@ -75,6 +76,7 @@ export default function SluttspillSkjema({
   fasit: TippData;
   erLevert: boolean;
   låsteKamper: Record<string, boolean>;
+  startetKamper: Record<string, boolean>;
   altLåst: boolean;
   påLagre: (data: TippData, levert: boolean) => Promise<LagreResultat>;
 }) {
@@ -177,6 +179,7 @@ export default function SluttspillSkjema({
         borte={borte}
         vinner={tipp.vinnere?.[String(kampnummer)] ?? null}
         låst={Boolean(låsteKamper[String(kampnummer)])}
+        startet={Boolean(startetKamper[String(kampnummer)])}
         etikett={etikett}
         medaljer={opts?.medaljer}
         påVelg={velgVinner}
@@ -322,6 +325,7 @@ function Kampkort({
   borte,
   vinner,
   låst,
+  startet,
   etikett,
   medaljer,
   påVelg,
@@ -331,12 +335,18 @@ function Kampkort({
   borte: string | null;
   vinner: string | null;
   låst: boolean;
+  startet: boolean;
   etikett: string;
   medaljer?: Medaljer;
   påVelg: (kampnummer: number, lagId: string) => void;
 }) {
   const beggeKlare = Boolean(hjemme && borte);
   const kanEndre = !låst && beggeKlare;
+  // Sen-varsel vises bare for dem som faktisk pådrar seg straff: kampen har
+  // startet, man kan tippe den (begge lag klare), men har ikke valgt vinner
+  // ennå. Har man alt tippet i tide, eller kan ikke tippe (Ubestemt), vises
+  // ingenting.
+  const varsleSen = startet && beggeKlare && !vinner;
 
   const medalje = (lagId: string | null, vant: boolean): string | undefined => {
     if (!medaljer || !vinner || !lagId) return undefined;
@@ -346,17 +356,28 @@ function Kampkort({
   return (
     <div
       className={`w-full rounded-xl border p-1.5 ${
-        låst ? "border-zinc-200 bg-zinc-50" : "border-zinc-200 bg-white"
+        låst
+          ? "border-zinc-200 bg-zinc-50"
+          : varsleSen
+            ? "border-amber-300 bg-amber-50/40"
+            : "border-zinc-200 bg-white"
       }`}
     >
       <div className="mb-1 flex items-center justify-between gap-1 px-0.5 text-[10px] leading-tight text-zinc-500">
         <span className="truncate">{etikett}</span>
-        {låst && (
+        {låst ? (
           <span className="inline-flex shrink-0 items-center gap-0.5 font-medium text-zinc-500">
             <Lock className="h-2.5 w-2.5" />
             Låst
           </span>
-        )}
+        ) : varsleSen ? (
+          <span
+            className="inline-flex shrink-0 items-center font-semibold text-amber-600"
+            title="Kampen har startet – tipper du nå gir den −3 poeng"
+          >
+            startet · −3
+          </span>
+        ) : null}
       </div>
       <div className="flex flex-col gap-1">
         <Lagrad

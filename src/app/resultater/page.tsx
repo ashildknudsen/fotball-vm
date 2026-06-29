@@ -97,6 +97,10 @@ export default async function ResultatSide() {
             <strong>Bonus:</strong> +3 poeng for hvert lag du har riktig i
             finalen.
           </li>
+          <li>
+            <strong>For sent:</strong> tipper du en kamp etter at den har startet,
+            gir den −3 poeng.
+          </li>
         </ul>
       </div>
 

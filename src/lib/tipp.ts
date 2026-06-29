@@ -8,6 +8,7 @@ import {
   kampstart,
   lagIGruppe,
   poengPerRunde,
+  senTippStraff,
   sluttspill,
 } from "@/data/turnering";
 
@@ -26,6 +27,10 @@ export type TippData = {
   treerrekkefolge?: Gruppe[];
   // Tippet vinner av hver sluttspillkamp. Nøkkel = kampnummer.
   vinnere?: Record<string, string>;
+  // Tidspunkt (ISO) da hver vinner sist ble valgt. Settes SERVER-SIDE ved
+  // lagring (klientens verdi ignoreres). Brukes til å se om en kamp ble tippet
+  // etter avspark (sen tipp → minuspoeng). Mangler på eldre tips = «i tide».
+  vinnereTid?: Record<string, string>;
   // Kun på fasit: den ekte 16-delsfinale-oppstillingen (kampnr -> lagene),
   // som sluttspill-tippingen (fase 2) seedes fra. Fylles av auto-henting/admin.
   sluttspilloppsett?: Record<string, { hjemme: string; borte: string }>;
@@ -184,6 +189,7 @@ export function sanérTipp(input: TippData): TippData {
     ),
     treerrekkefolge: input.treerrekkefolge ? [...input.treerrekkefolge] : undefined,
     vinnere: { ...(input.vinnere ?? {}) },
+    vinnereTid: input.vinnereTid,
     sluttspilloppsett: input.sluttspilloppsett,
     kamptider: input.kamptider,
     tabeller: input.tabeller,
@@ -273,12 +279,19 @@ export function beregnPoengDetaljer(
     }
   }
 
-  let sluttspill = 0;
-  // Poeng per riktig tippet kampvinner, skalert etter runde.
-  for (const [kampnummer, fasitVinner] of Object.entries(fasit.vinnere ?? {})) {
-    if (tipp.vinnere?.[kampnummer] === fasitVinner) {
-      const kamp = finnKamp(Number(kampnummer));
-      if (kamp) sluttspill += poengPerRunde[kamp.runde];
+  let sluttspillP = 0;
+  for (const kamp of sluttspill) {
+    const nr = String(kamp.nummer);
+    const pick = tipp.vinnere?.[nr];
+    if (!pick) continue;
+    // Tippet etter avspark → flat minus-straff, uansett om tippet er riktig.
+    if (tippetForSent(kamp.nummer, tipp, fasit)) {
+      sluttspillP -= senTippStraff;
+      continue;
+    }
+    // I tide: poeng for riktig vinner, skalert etter runde.
+    if (fasit.vinnere?.[nr] === pick) {
+      sluttspillP += poengPerRunde[kamp.runde];
     }
   }
 
@@ -289,11 +302,11 @@ export function beregnPoengDetaljer(
   );
   if (fasitFinalister.size > 0) {
     for (const lag of [tipp.vinnere?.["101"], tipp.vinnere?.["102"]]) {
-      if (lag && fasitFinalister.has(lag)) sluttspill += finalistBonus;
+      if (lag && fasitFinalister.has(lag)) sluttspillP += finalistBonus;
     }
   }
 
-  return { gruppe, sluttspill, total: gruppe + sluttspill };
+  return { gruppe, sluttspill: sluttspillP, total: gruppe + sluttspillP };
 }
 
 // Beregner totalpoeng for en kupong sammenlignet med fasit.
@@ -331,13 +344,30 @@ export function kampStart(kampnummer: number, fasit: TippData): Date | null {
   return iso ? new Date(iso) : null;
 }
 
-// Er en enkelt sluttspillkamp låst for tipping? Den låses ved det FØRSTE av:
-//  - kampens eget avspark (så man aldri kan tippe en kamp som er i gang), eller
-//  - den felles sluttfristen (som låser alt som ikke alt er låst).
-export function kampLåst(kampnummer: number, fasit: TippData): boolean {
-  if (sluttspillErLåst()) return true;
+// Er en enkelt sluttspillkamp låst for tipping? Alt låses ved den felles
+// sluttfristen. Kamper som alt har startet er IKKE låst – man kan fortsatt tippe
+// dem (til fristen), men en kamp tippet etter avspark gir minuspoeng (se
+// tippetForSent + beregnPoengDetaljer). `_fasit` beholdes i signaturen for
+// bakoverkompatibilitet med kallene.
+export function kampLåst(_kampnummer: number, _fasit: TippData): boolean {
+  void _kampnummer;
+  void _fasit;
+  return sluttspillErLåst();
+}
+
+// Ble kampen tippet ETTER at den startet? Sammenligner lagringstidspunktet for
+// vinner-valget med avsparkstiden (begge deterministiske, ingen «now»). Tips
+// uten tidsstempel (lagt inn før denne mekanikken, da kampen var låst etter
+// avspark) regnes som «i tide».
+export function tippetForSent(
+  kampnummer: number,
+  tipp: TippData,
+  fasit: TippData,
+): boolean {
+  const tid = tipp.vinnereTid?.[String(kampnummer)];
+  if (!tid) return false;
   const start = kampStart(kampnummer, fasit);
-  return start !== null && new Date() >= start;
+  return start !== null && new Date(tid) >= start;
 }
 
 export function sluttspillfristTekst(): string {
