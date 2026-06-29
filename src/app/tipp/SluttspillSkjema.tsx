@@ -342,6 +342,11 @@ function Kampkort({
 }) {
   const beggeKlare = Boolean(hjemme && borte);
   const kanEndre = !låst && beggeKlare;
+  // Sen-varsel vises bare for dem som faktisk pådrar seg straff: kampen har
+  // startet, man kan tippe den (begge lag klare), men har ikke valgt vinner
+  // ennå. Har man alt tippet i tide, eller kan ikke tippe (Ubestemt), vises
+  // ingenting.
+  const varsleSen = startet && beggeKlare && !vinner;
 
   const medalje = (lagId: string | null, vant: boolean): string | undefined => {
     if (!medaljer || !vinner || !lagId) return undefined;
@@ -353,7 +358,7 @@ function Kampkort({
       className={`w-full rounded-xl border p-1.5 ${
         låst
           ? "border-zinc-200 bg-zinc-50"
-          : startet
+          : varsleSen
             ? "border-amber-300 bg-amber-50/40"
             : "border-zinc-200 bg-white"
       }`}
@@ -365,7 +370,7 @@ function Kampkort({
             <Lock className="h-2.5 w-2.5" />
             Låst
           </span>
-        ) : startet ? (
+        ) : varsleSen ? (
           <span
             className="inline-flex shrink-0 items-center font-semibold text-amber-600"
             title="Kampen har startet – tipper du nå gir den −3 poeng"
