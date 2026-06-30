@@ -16,6 +16,7 @@ import {
   type TippData,
   MAKS_TREERE,
   deltakerePåKamp,
+  deltakerePåKampSluttspill,
   sanérTipp,
   treerGrupper,
 } from "@/lib/tipp";
@@ -302,6 +303,7 @@ export default function TippeSkjema({
                     key={kamp.nummer}
                     kamp={kamp}
                     tipp={tipp}
+                    fasit={erFasit ? tipp : undefined}
                     kanEndre={kanEndre}
                     påVelg={velgVinner}
                   />
@@ -394,15 +396,22 @@ function Seksjonstittel({
 function Kampkort({
   kamp,
   tipp,
+  fasit,
   kanEndre,
   påVelg,
 }: {
   kamp: Sluttspillkamp;
   tipp: TippData;
+  // Når satt (fasitoversikten): seed 16-delsfinalen fra de EKTE lagene i
+  // fasit.sluttspilloppsett – samme oppslag som spillernes tippeskjema – i
+  // stedet for den forenklede treer-fordelingen i deltakerePåKamp.
+  fasit?: TippData;
   kanEndre: boolean;
   påVelg: (kampnummer: number, lagId: string) => void;
 }) {
-  const { hjemme, borte } = deltakerePåKamp(kamp.nummer, tipp);
+  const { hjemme, borte } = fasit
+    ? deltakerePåKampSluttspill(kamp.nummer, tipp, fasit)
+    : deltakerePåKamp(kamp.nummer, tipp);
   const vinner = tipp.vinnere?.[String(kamp.nummer)] ?? null;
   const beggeKlare = Boolean(hjemme && borte);
 
