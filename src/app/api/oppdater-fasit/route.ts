@@ -47,6 +47,12 @@ export async function GET(request: Request) {
       tabeller: utledet.tabeller ?? eksisterende.tabeller,
     });
 
+    // sanérTipp() kan ikke gjenskape FIFAs fordeling av de 8 beste 3.-plassene,
+    // så den stryker feilaktig utledede vinnere i treer-slott (f.eks. kamp 74,
+    // Tyskland–Paraguay). Disse er hentet fra ekte, ferdigspilte API-kamper og
+    // ER fasit – legg dem tilbake etter saneringen.
+    flettet.vinnere = { ...(flettet.vinnere ?? {}), ...(utledet.vinnere ?? {}) };
+
     const { error } = await admin.from("fasit").upsert({
       id: 1,
       data: flettet,
