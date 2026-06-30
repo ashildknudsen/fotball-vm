@@ -4,13 +4,10 @@ import { hentEllerOpprettProfil, erAdmin } from "@/lib/profil";
 import {
   tippingErLåst,
   tippefristTekst,
-  tippefrist,
   sluttspillErLåst,
   sluttspillfristTekst,
-  sluttspillfrist,
 } from "@/lib/tipp";
 import { FASE } from "@/lib/fase";
-import Nedtelling from "@/components/Nedtelling";
 
 export default async function Hjemmeside() {
   const profil = await hentEllerOpprettProfil();
@@ -18,7 +15,6 @@ export default async function Hjemmeside() {
   const erSluttspill = FASE === "sluttspill";
   const låst = erSluttspill ? sluttspillErLåst() : tippingErLåst();
   const frist = erSluttspill ? sluttspillfristTekst() : tippefristTekst();
-  const fristMs = erSluttspill ? sluttspillfrist().getTime() : tippefrist().getTime();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -58,7 +54,6 @@ export default async function Hjemmeside() {
                 </>
               )}
             </p>
-            <Nedtelling frist={fristMs} />
           </div>
         )}
 
