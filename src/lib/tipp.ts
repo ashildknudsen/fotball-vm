@@ -212,12 +212,19 @@ export function sanérTipp(input: TippData): TippData {
   tipp.treerrekkefolge = treerGrupper(tipp);
 
   // Vinnere behandles i kampnummer-rekkefølge slik at de er ryddet før de
-  // brukes til å løse ut senere kamper.
+  // brukes til å løse ut senere kamper. Når den EKTE 16-delsfinale-oppstillingen
+  // finnes (fasit), valideres vinnerne mot den – ellers stryker den forenklede
+  // treer-fordelingen i deltakerePåKamp gyldige vinnere i treer-slott (kamp 74 m.fl.).
+  const harOppsett = Boolean(
+    tipp.sluttspilloppsett && Object.keys(tipp.sluttspilloppsett).length > 0,
+  );
   for (const kamp of sluttspill) {
     const nøkkel = String(kamp.nummer);
     const vinner = tipp.vinnere![nøkkel];
     if (!vinner) continue;
-    const { hjemme, borte } = deltakerePåKamp(kamp.nummer, tipp);
+    const { hjemme, borte } = harOppsett
+      ? deltakerePåKampSluttspill(kamp.nummer, tipp, tipp)
+      : deltakerePåKamp(kamp.nummer, tipp);
     if (vinner !== hjemme && vinner !== borte) {
       delete tipp.vinnere![nøkkel];
     }
