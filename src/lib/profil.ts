@@ -47,9 +47,20 @@ export async function hentEllerOpprettProfil(): Promise<Profil> {
 
 // Er den innloggede brukeren admin? Basert på ADMIN_EPOSTER (env).
 export function erAdmin(epost: string): boolean {
-  const adminEposter = (process.env.ADMIN_EPOSTER ?? "")
+  return iEpostliste(process.env.ADMIN_EPOSTER, epost);
+}
+
+// Er brukeren blant de utvalgte som har fått gjenåpnet sluttspill-tippingen
+// (8-delsfinale og utover)? Basert på GJENAPNE_EPOSTER (env), samme mønster som
+// erAdmin. Tom/uten variabel = ingen gjenåpning.
+export function erGjenåpnet(epost: string): boolean {
+  return iEpostliste(process.env.GJENAPNE_EPOSTER, epost);
+}
+
+function iEpostliste(liste: string | undefined, epost: string): boolean {
+  const eposter = (liste ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
-  return adminEposter.includes(epost.toLowerCase());
+  return eposter.includes(epost.toLowerCase());
 }

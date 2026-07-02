@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { Check, PencilLine } from "lucide-react";
-import { hentEllerOpprettProfil } from "@/lib/profil";
+import { hentEllerOpprettProfil, erGjenåpnet } from "@/lib/profil";
 import { lagServerKlient } from "@/lib/supabase/server";
 import { lagAdminKlient } from "@/lib/supabase/admin";
 import {
   type TippData,
   tippingErLåst,
   sluttspillErLåst,
-  kampLåst,
+  kampLåstMedReåpning,
   kampStart,
+  sluttspillLåstFor,
   sluttspillfristTekst,
 } from "@/lib/tipp";
 import { sluttspill } from "@/data/turnering";
@@ -18,7 +19,7 @@ import SluttspillSkjema from "./SluttspillSkjema";
 import { lagreTipp } from "./handlinger";
 
 export default async function TippSide() {
-  await hentEllerOpprettProfil();
+  const profil = await hentEllerOpprettProfil();
   const supabase = await lagServerKlient();
   const {
     data: { user },
@@ -46,6 +47,10 @@ export default async function TippSide() {
     fasit = (fasitRad?.data as TippData) ?? {};
   }
 
+  // Reåpning: utvalgte deltakere (GJENAPNE_EPOSTER) kan fullføre 8-delsfinale og
+  // utover etter at fristen har gått ut. 16-delsfinalene forblir låst for alle.
+  const gjenåpnet = erSluttspill && erGjenåpnet(profil.epost);
+
   // Per-kamp-låsing: hver sluttspillkamp låses ved sitt eget avspark, og alt
   // låses senest ved den felles sluttfristen. I gruppespill-fasen gjelder kun
   // den ene tippefristen.
@@ -58,13 +63,20 @@ export default async function TippSide() {
     const fristPassert = sluttspillErLåst();
     for (const kamp of sluttspill) {
       const nøkkel = String(kamp.nummer);
-      låsteKamper[nøkkel] = kampLåst(kamp.nummer, fasit);
+      låsteKamper[nøkkel] = kampLåstMedReåpning(
+        kamp.nummer,
+        fasit,
+        gjenåpnet,
+        eksisterende,
+      );
       const start = kampStart(kamp.nummer, fasit);
       startetKamper[nøkkel] =
         !fristPassert && start !== null && nå >= start;
     }
   }
-  const altLåst = erSluttspill ? sluttspillErLåst() : tippingErLåst();
+  const altLåst = erSluttspill
+    ? sluttspillLåstFor(gjenåpnet)
+    : tippingErLåst();
 
   const tittel = erSluttspill
     ? "Tipp sluttspillet"
@@ -104,6 +116,12 @@ export default async function TippSide() {
       {altLåst ? (
         <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Fristen har gått ut – du kan se tipset ditt, men ikke endre det.
+        </p>
+      ) : gjenåpnet ? (
+        <p className="rounded-lg bg-[#5239ba]/10 px-4 py-3 text-sm text-[#5239ba]">
+          Tippene du allerede har levert er låst. Du kan fylle inn kampene du
+          mangler – hvor som helst i treet – fram til de starter (første
+          8-delsfinale spilles 4. juli).
         </p>
       ) : (
         <p className="text-sm text-zinc-500">

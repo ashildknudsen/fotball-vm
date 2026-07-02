@@ -362,6 +362,48 @@ export function kampLåst(_kampnummer: number, _fasit: TippData): boolean {
   return sluttspillErLåst();
 }
 
+// Antall kamper i 16-delsfinalen. Kamp 73–88 er R16; 89 og utover er
+// 8-delsfinale og videre.
+const SISTE_16DELSFINALE = 88;
+
+// Tidspunktet sluttspillet ble gjenåpnet for utvalgte deltakere. Vinner-valg
+// lagret FØR dette regnes som «allerede tippet» og låses; tomme slott (og valg
+// lagt inn under gjenåpningen) er åpne. Settes via env GJENAPNING_FRA (ISO).
+export function gjenåpningFra(): Date {
+  return new Date(process.env.GJENAPNING_FRA ?? "2026-07-02T00:00:00Z");
+}
+
+// Låsing med reåpning: etter at sluttfristen har gått ut kan utvalgte deltakere
+// (gjenåpnet=true) fullføre kampene de IKKE har tippet ennå – uansett hvor i
+// treet. Alt de allerede hadde tippet før gjenåpningen forblir låst, 16-dels-
+// finalene (73–88) er alltid låst, og en kamp som alt har startet låses (så man
+// ikke tipper en kamp i gang). Er ikke fristen gått ut, eller er brukeren ikke
+// gjenåpnet, gjelder den vanlige låsingen uendret.
+export function kampLåstMedReåpning(
+  kampnummer: number,
+  fasit: TippData,
+  gjenåpnet: boolean,
+  tipp: TippData,
+): boolean {
+  const låst = kampLåst(kampnummer, fasit);
+  if (!gjenåpnet || !låst) return låst;
+  if (kampnummer <= SISTE_16DELSFINALE) return true; // R16 forblir alltid låst
+  const start = kampStart(kampnummer, fasit);
+  if (start !== null && new Date() >= start) return true; // startet kamp låses
+  const nøkkel = String(kampnummer);
+  const valg = tipp.vinnere?.[nøkkel];
+  if (!valg) return false; // ikke tippet ennå → åpent for å fullføre
+  // Tippet fra før gjenåpningen → låst. Valg uten tidsstempel regnes som gammelt.
+  const tid = tipp.vinnereTid?.[nøkkel];
+  return !tid || new Date(tid) < gjenåpningFra();
+}
+
+// Er HELE sluttspillet låst for denne brukeren? Gjenåpnede deltakere kan fortsatt
+// lagre (for 89+), så «alt låst» gjelder ikke dem.
+export function sluttspillLåstFor(gjenåpnet: boolean): boolean {
+  return sluttspillErLåst() && !gjenåpnet;
+}
+
 // Ble kampen tippet ETTER at den startet? Sammenligner lagringstidspunktet for
 // vinner-valget med avsparkstiden (begge deterministiske, ingen «now»). Tips
 // uten tidsstempel (lagt inn før denne mekanikken, da kampen var låst etter

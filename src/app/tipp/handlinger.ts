@@ -5,10 +5,13 @@ import { lagServerKlient } from "@/lib/supabase/server";
 import { lagAdminKlient } from "@/lib/supabase/admin";
 import {
   type TippData,
+  kampLåstMedReåpning,
   sanérSluttspill,
   sluttspillErLåst,
   tippingErLåst,
 } from "@/lib/tipp";
+import { erGjenåpnet } from "@/lib/profil";
+import { sluttspill } from "@/data/turnering";
 import { FASE } from "@/lib/fase";
 
 export type LagreResultat = { ok: boolean; melding: string };
@@ -36,16 +39,13 @@ export async function lagreTipp(
   }
 
   // Sluttspill-fasen: alt låses ved den felles sluttfristen (30. juni 16:00).
-  // Enkeltkamper låses IKKE ved avspark – de kan fortsatt tippes (men en kamp
-  // tippet etter avspark gir minuspoeng, se beregnPoengDetaljer).
-  if (sluttspillErLåst()) {
+  // Utvalgte deltakere (GJENAPNE_EPOSTER) har fått gjenåpnet 8-delsfinale og
+  // utover – de kan fortsatt lagre selv om fristen har gått ut.
+  const gjenåpnet = erGjenåpnet(user.email ?? "");
+  if (sluttspillErLåst() && !gjenåpnet) {
     return { ok: false, melding: "Sluttspillfristen har gått ut – tipsene er låst." };
   }
 
-  // Tidsstempel per vinner-valg settes SERVER-SIDE (klientens vinnereTid
-  // ignoreres, så det ikke kan forfalskes). Uendrede valg beholder sitt gamle
-  // stempel; nye/endrede valg stemples nå. Eldre valg uten stempel (lagt inn da
-  // kampen var låst etter avspark) forblir uten stempel = «i tide».
   const { data: lagretRad } = await supabase
     .from("tipp")
     .select("data")
@@ -56,7 +56,30 @@ export async function lagreTipp(
   const gammelTid = lagret.vinnereTid ?? {};
   const nå = new Date().toISOString();
 
-  const vinnere = data.vinnere ?? {};
+  // Fasiten trengs til per-kamp-låsing og server-side sanering.
+  const { data: fasitRad } = await lagAdminKlient()
+    .from("fasit")
+    .select("data")
+    .eq("id", 1)
+    .maybeSingle();
+  const fasit = (fasitRad?.data as TippData) ?? {};
+
+  // Håndhev per-kamp-låsing server-side: for kamper som er låst for denne
+  // brukeren (16-delsfinalene alltid, og startede 89+-kamper for gjenåpnede)
+  // beholdes den lagrede verdien – klientens forsøk på å endre dem ignoreres.
+  const vinnere: Record<string, string> = { ...(data.vinnere ?? {}) };
+  for (const kamp of sluttspill) {
+    const nr = String(kamp.nummer);
+    if (kampLåstMedReåpning(kamp.nummer, fasit, gjenåpnet, lagret)) {
+      if (gamleVinnere[nr]) vinnere[nr] = gamleVinnere[nr];
+      else delete vinnere[nr];
+    }
+  }
+
+  // Tidsstempel per vinner-valg settes SERVER-SIDE (klientens vinnereTid
+  // ignoreres, så det ikke kan forfalskes). Uendrede valg beholder sitt gamle
+  // stempel; nye/endrede valg stemples nå. Eldre valg uten stempel (lagt inn da
+  // kampen var låst etter avspark) forblir uten stempel = «i tide».
   const vinnereTid: Record<string, string> = {};
   for (const [nr, lag] of Object.entries(vinnere)) {
     if (gamleVinnere[nr] === lag) {
@@ -65,15 +88,6 @@ export async function lagreTipp(
       vinnereTid[nr] = nå;
     }
   }
-
-  // Fasiten trengs til server-side sanering (rydder vekk vinnere som ikke lenger
-  // er deltakere i kampen).
-  const { data: fasitRad } = await lagAdminKlient()
-    .from("fasit")
-    .select("data")
-    .eq("id", 1)
-    .maybeSingle();
-  const fasit = (fasitRad?.data as TippData) ?? {};
 
   const trygt = sanérSluttspill({ ...data, vinnere, vinnereTid }, fasit);
   return await lagre(supabase, user.id, trygt, levert);
