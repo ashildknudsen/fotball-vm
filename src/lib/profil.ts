@@ -50,10 +50,14 @@ export function erAdmin(epost: string): boolean {
   return iEpostliste(process.env.ADMIN_EPOSTER, epost);
 }
 
-// Er brukeren blant de utvalgte som har fått gjenåpnet sluttspill-tippingen
-// (8-delsfinale og utover)? Basert på GJENAPNE_EPOSTER (env), samme mønster som
-// erAdmin. Tom/uten variabel = ingen gjenåpning.
+// Er brukeren blant de utvalgte som har fått gjenåpnet sluttspill-tippingen?
+// Basert på GJENAPNE_EPOSTER (env), samme mønster som erAdmin. Gjenåpningen er
+// tidsavgrenset: er GJENAPNING_TIL (ISO) satt og passert, er vinduet stengt og
+// ingen regnes lenger som gjenåpnet – da låses sluttspillet igjen for alle.
+// Tom/uten GJENAPNE_EPOSTER = ingen gjenåpning.
 export function erGjenåpnet(epost: string): boolean {
+  const til = process.env.GJENAPNING_TIL;
+  if (til && new Date() >= new Date(til)) return false;
   return iEpostliste(process.env.GJENAPNE_EPOSTER, epost);
 }
 
